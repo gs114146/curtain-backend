@@ -1,0 +1,507 @@
+{
+	"info": {
+		"_postman_id": "curtain-shop-api-collection",
+		"name": "Curtain Shop Public API",
+		"description": "Public API collection for Curtain Shop frontend integration",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Get All Filter Options",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/public/filters",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"public",
+						"filters"
+					]
+				},
+				"description": "Get all available filter options including colors, designs, materials, transparencies, characteristics, and price range."
+			},
+			"response": [
+				{
+					"name": "Success Response",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/public/filters",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"public",
+								"filters"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n  \"success\": true,\n  \"data\": {\n    \"colors\": [\n      {\n        \"id\": 1,\n        \"name\": \"White\",\n        \"color_value\": \"#FFFFFF\"\n      },\n      {\n        \"id\": 2,\n        \"name\": \"Black\",\n        \"color_value\": \"#000000\"\n      }\n    ],\n    \"designs\": [\n      {\n        \"id\": 1,\n        \"name\": \"Plain\"\n      },\n      {\n        \"id\": 2,\n        \"name\": \"Geometric\"\n      }\n    ],\n    \"materials\": [\n      {\n        \"id\": 1,\n        \"name\": \"Cotton\"\n      },\n      {\n        \"id\": 2,\n        \"name\": \"Polyester\"\n      }\n    ],\n    \"transparencies\": [\n      {\n        \"id\": 1,\n        \"name\": \"Opaque\"\n      },\n      {\n        \"id\": 2,\n        \"name\": \"Semi-transparent\"\n      }\n    ],\n    \"characteristics\": [\n      {\n        \"id\": 1,\n        \"name\": \"Latest collection\"\n      },\n      {\n        \"id\": 2,\n        \"name\": \"Flame-retardant\"\n      }\n    ],\n    \"price_range\": {\n      \"min\": \"29.99\",\n      \"max\": \"299.99\"\n    }\n  }\n}"
+				}
+			]
+		},
+		{
+			"name": "Get Products with Search and Filters",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/public/products?search={{search_term}}&color_id={{color_id}}&design_id={{design_id}}&material_id={{material_id}}&transparency_id={{transparency_id}}&characteristic_id={{characteristic_id}}&min_price={{min_price}}&max_price={{max_price}}&in_stock={{in_stock}}&featured={{featured}}&sort_by={{sort_by}}&sort_order={{sort_order}}&per_page={{per_page}}&page={{page}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"public",
+						"products"
+					],
+					"query": [
+						{
+							"key": "search",
+							"value": "{{search_term}}",
+							"description": "Search term for product name, description, SKU, color, design, or material"
+						},
+						{
+							"key": "color_id",
+							"value": "{{color_id}}",
+							"description": "Filter by color ID"
+						},
+						{
+							"key": "design_id",
+							"value": "{{design_id}}",
+							"description": "Filter by design ID"
+						},
+						{
+							"key": "material_id",
+							"value": "{{material_id}}",
+							"description": "Filter by material ID"
+						},
+						{
+							"key": "transparency_id",
+							"value": "{{transparency_id}}",
+							"description": "Filter by transparency ID"
+						},
+						{
+							"key": "characteristic_id",
+							"value": "{{characteristic_id}}",
+							"description": "Filter by characteristic ID"
+						},
+						{
+							"key": "min_price",
+							"value": "{{min_price}}",
+							"description": "Minimum price filter"
+						},
+						{
+							"key": "max_price",
+							"value": "{{max_price}}",
+							"description": "Maximum price filter"
+						},
+						{
+							"key": "in_stock",
+							"value": "{{in_stock}}",
+							"description": "Filter by stock availability (1 for in stock, 0 for out of stock)"
+						},
+						{
+							"key": "featured",
+							"value": "{{featured}}",
+							"description": "Filter by featured products (1 for featured, 0 for non-featured)"
+						},
+						{
+							"key": "sort_by",
+							"value": "{{sort_by}}",
+							"description": "Sort field (name, price, created_at, stock_quantity)"
+						},
+						{
+							"key": "sort_order",
+							"value": "{{sort_order}}",
+							"description": "Sort order (asc, desc)"
+						},
+						{
+							"key": "per_page",
+							"value": "{{per_page}}",
+							"description": "Number of items per page (default: 12, max: 50)"
+						},
+						{
+							"key": "page",
+							"value": "{{page}}",
+							"description": "Page number for pagination"
+						}
+					]
+				},
+				"description": "Get products with search and filtering capabilities. All query parameters are optional."
+			},
+			"response": [
+				{
+					"name": "Success Response",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/public/products?per_page=2",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"public",
+								"products"
+							],
+							"query": [
+								{
+									"key": "per_page",
+									"value": "2"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Elegant Curtain\",\n      \"description\": \"Beautiful curtain for your home\",\n      \"sku\": \"CUR-001\",\n      \"price\": \"99.99\",\n      \"sale_price\": \"79.99\",\n      \"stock_quantity\": 50,\n      \"dimensions\": \"120cm x 150cm\",\n      \"weight\": \"2.5kg\",\n      \"featured\": true,\n      \"in_stock\": true,\n      \"status\": \"active\",\n      \"meta_title\": \"Elegant Curtain - Premium Quality\",\n      \"meta_description\": \"High-quality elegant curtain for modern homes\",\n      \"color\": {\n        \"id\": 1,\n        \"name\": \"White\",\n        \"color_value\": \"#FFFFFF\"\n      },\n      \"design\": {\n        \"id\": 1,\n        \"name\": \"Plain\"\n      },\n      \"material\": {\n        \"id\": 1,\n        \"name\": \"Cotton\"\n      },\n      \"transparency\": {\n        \"id\": 1,\n        \"name\": \"Opaque\"\n      },\n      \"characteristic\": {\n        \"id\": 1,\n        \"name\": \"Latest collection\"\n      },\n      \"media\": [\n        {\n          \"id\": 1,\n          \"file_path\": \"/storage/products/curtain-1.jpg\",\n          \"file_type\": \"image\",\n          \"is_primary\": true\n        }\n      ],\n      \"created_at\": \"2024-01-15T10:30:00.000000Z\",\n      \"updated_at\": \"2024-01-15T10:30:00.000000Z\"\n    }\n  ],\n  \"pagination\": {\n    \"current_page\": 1,\n    \"last_page\": 5,\n    \"per_page\": 12,\n    \"total\": 50,\n    \"from\": 1,\n    \"to\": 12,\n    \"has_more_pages\": true\n  },\n  \"filters_applied\": {\n    \"search\": null,\n    \"color_id\": null,\n    \"design_id\": null,\n    \"material_id\": null,\n    \"transparency_id\": null,\n    \"characteristic_id\": null,\n    \"min_price\": null,\n    \"max_price\": null,\n    \"in_stock\": null,\n    \"featured\": null,\n    \"sort_by\": \"created_at\",\n    \"sort_order\": \"desc\"\n  }\n}"
+				}
+			]
+		},
+		{
+			"name": "Get All Products (Basic)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/public/products",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"public",
+						"products"
+					]
+				},
+				"description": "Get all products without any filters (basic listing)"
+			}
+		},
+		{
+			"name": "Search Products",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/public/products?search=curtain",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"public",
+						"products"
+					],
+					"query": [
+						{
+							"key": "search",
+							"value": "curtain"
+						}
+					]
+				},
+				"description": "Search products by keyword"
+			}
+		},
+		{
+			"name": "Filter by Color",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/public/products?color_id=1",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"public",
+						"products"
+					],
+					"query": [
+						{
+							"key": "color_id",
+							"value": "1"
+						}
+					]
+				},
+				"description": "Filter products by color ID"
+			}
+		},
+		{
+			"name": "Filter by Price Range",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/public/products?min_price=50&max_price=200",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"public",
+						"products"
+					],
+					"query": [
+						{
+							"key": "min_price",
+							"value": "50"
+						},
+						{
+							"key": "max_price",
+							"value": "200"
+						}
+					]
+				},
+				"description": "Filter products by price range"
+			}
+		},
+		{
+			"name": "Get Featured Products",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/public/products?featured=1",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"public",
+						"products"
+					],
+					"query": [
+						{
+							"key": "featured",
+							"value": "1"
+						}
+					]
+				},
+				"description": "Get only featured products"
+			}
+		},
+		{
+			"name": "Sort Products by Price",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/public/products?sort_by=price&sort_order=asc",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"public",
+						"products"
+					],
+					"query": [
+						{
+							"key": "sort_by",
+							"value": "price"
+						},
+						{
+							"key": "sort_order",
+							"value": "asc"
+						}
+					]
+				},
+				"description": "Sort products by price in ascending order"
+			}
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://curtain-shop.test",
+			"type": "string"
+		},
+		{
+			"key": "search_term",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "color_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "design_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "material_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "transparency_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "characteristic_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "min_price",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "max_price",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "in_stock",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "featured",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "sort_by",
+			"value": "created_at",
+			"type": "string"
+		},
+		{
+			"key": "sort_order",
+			"value": "desc",
+			"type": "string"
+		},
+		{
+			"key": "per_page",
+			"value": "12",
+			"type": "string"
+		},
+		{
+			"key": "page",
+			"value": "1",
+			"type": "string"
+		}
+	]
+}
