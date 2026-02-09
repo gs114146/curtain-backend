@@ -125,14 +125,8 @@
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="edit_direction" class="form-label">Direction</label>
-                                    <select class="form-select" id="edit_direction" name="direction">
-                                        <option value="">Select Direction</option>
-                                        <option value="horizontal"
-                                            {{ $product->direction == 'horizontal' ? 'selected' : '' }}>Horizontal</option>
-                                        <option value="vertical"
-                                            {{ $product->direction == 'vertical' ? 'selected' : '' }}>
-                                            Vertical</option>
-                                    </select>
+                                    <input type="text" class="form-control" id="edit_direction" name="direction"
+                                        placeholder="Enter direction" value="{{ $product->direction }}">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="edit_extra_data" class="form-label">Extra Data</label>
@@ -140,9 +134,10 @@
                                         placeholder="Enter extra data">{{ $product->extra_data }}</textarea>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="edit_design_ids" class="form-label">Designs <span
+                                    <label for="edit_design_ids" class="form-label">Design/Category <span
                                             class="text-danger">*</span></label>
-                                    <select class="form-select" id="edit_design_ids" name="design_ids[]" multiple required>
+                                    <select class="form-select" id="edit_design_ids" name="design_ids[]" multiple
+                                        required>
                                         @foreach ($designs as $design)
                                             <option value="{{ $design->id }}"
                                                 {{ $product->relationLoaded('designs') && $product->getRelation('designs')->contains($design->id) ? 'selected' : '' }}>
@@ -153,7 +148,8 @@
                                 <div class="col-md-6 mb-3">
                                     <label for="edit_material_ids" class="form-label">Materials <span
                                             class="text-danger">*</span></label>
-                                    <select class="form-select" id="edit_material_ids" name="material_ids[]" multiple required>
+                                    <select class="form-select" id="edit_material_ids" name="material_ids[]" multiple
+                                        required>
                                         @foreach ($materials as $material)
                                             <option value="{{ $material->id }}"
                                                 {{ $product->relationLoaded('materials') && $product->getRelation('materials')->contains($material->id) ? 'selected' : '' }}>
@@ -162,10 +158,8 @@
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="edit_transparency_id" class="form-label">Transparency <span
-                                            class="text-danger">*</span></label>
-                                    <select class="form-select" id="edit_transparency_id" name="transparency_id"
-                                        required>
+                                    <label for="edit_transparency_id" class="form-label">Transparency</label>
+                                    <select class="form-select" id="edit_transparency_id" name="transparency_id">
                                         <option value="">Select Transparency</option>
                                         @foreach ($transparencies as $transparency)
                                             <option value="{{ $transparency->id }}"
@@ -198,6 +192,28 @@
                                         @endforeach
                                     </select>
                                 </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="edit_price" class="form-label">Price</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">€</span>
+                                        <input type="number" class="form-control" id="edit_price" name="price"
+                                            step="0.01" min="0" value="{{ $product->price }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="edit_sale_price" class="form-label">Sale Price</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">€</span>
+                                        <input type="number" class="form-control" id="edit_sale_price"
+                                            name="sale_price" step="0.01" min="0"
+                                            value="{{ $product->sale_price }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="edit_stock_quantity" class="form-label">Stock Quantity</label>
+                                    <input type="number" class="form-control" id="edit_stock_quantity"
+                                        name="stock_quantity" min="0" value="{{ $product->stock_quantity }}">
+                                </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="edit_type" class="form-label">Product Type <span
                                             class="text-danger">*</span></label>
@@ -211,6 +227,20 @@
                                         </option>
                                         <option value="upholstery" {{ $product->type == 'upholstery' ? 'selected' : '' }}>
                                             Upholstery</option>
+                                        <option value="latest" {{ $product->type == 'latest' ? 'selected' : '' }}>
+                                            Latest</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="edit_product_base" class="form-label">Product Base <span
+                                            class="text-danger">*</span></label>
+                                    <select class="form-select" id="edit_product_base" name="product_base" required>
+                                        <option value="">Select Product Base</option>
+                                        <option value="curtain"
+                                            {{ $product->product_base == 'curtain' ? 'selected' : '' }}>Curtain</option>
+                                        <option value="upholstery"
+                                            {{ $product->product_base == 'upholstery' ? 'selected' : '' }}>Upholstery
+                                        </option>
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -230,11 +260,6 @@
                                         <input class="form-check-input" type="checkbox" id="edit_in_stock"
                                             name="in_stock" value="1" {{ $product->in_stock ? 'checked' : '' }}>
                                     </div>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="edit_designs" class="form-label">Designs</label>
-                                    <textarea class="form-control" id="edit_designs" name="designs" rows="2"
-                                        placeholder="Enter designs (comma-separated or one per line)">{{ $product->designs }}</textarea>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="edit_compositions" class="form-label">Compositions</label>
@@ -259,28 +284,6 @@
 
                             @if (!$isVariantProduct)
                                 <div class="row">
-                                    <div class="col-md-4 mb-3">
-                                        <label for="edit_price" class="form-label">Price</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text">€</span>
-                                            <input type="number" class="form-control" id="edit_price" name="price"
-                                                step="0.01" min="0" value="{{ $product->price }}">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4 mb-3">
-                                        <label for="edit_sale_price" class="form-label">Sale Price</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text">€</span>
-                                            <input type="number" class="form-control" id="edit_sale_price"
-                                                name="sale_price" step="0.01" min="0"
-                                                value="{{ $product->sale_price }}">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4 mb-3">
-                                        <label for="edit_stock_quantity" class="form-label">Stock Quantity</label>
-                                        <input type="number" class="form-control" id="edit_stock_quantity"
-                                            name="stock_quantity" min="0" value="{{ $product->stock_quantity }}">
-                                    </div>
                                     <div class="col-md-6 mb-3">
                                         <label for="edit_color_id" class="form-label">Color <span
                                                 class="text-danger">*</span></label>
@@ -309,8 +312,8 @@
                                                         $idx = $index + 1;
                                                         $primaryMedia = $variant->media->first();
                                                     @endphp
-                                                    <div class="variant-item card border-0 shadow-sm mb-3"
-                                                        data-variant-index="{{ $idx }}">
+                                                    <div class="variant-item card border-0 shadow-sm mb-3 existing-variant-item"
+                                                        data-variant-index="{{ $idx }}" data-variant-id="{{ $variant->id }}">
                                                         <div
                                                             class="card-header bg-light d-flex justify-content-between align-items-center">
                                                             <div class="d-flex align-items-center">
@@ -472,4 +475,49 @@
 
 @push('scripts')
     <script src="{{ asset('js/admin/product-variants.js') }}"></script>
+    <script>
+        $(document).ready(function() {
+            // Initialize Select2 for multi-select fields on edit page
+            if ($('#editProductForm').length > 0) {
+                // Wait a bit to ensure DOM is fully ready and products.js has loaded
+                setTimeout(function() {
+                    const multiSelectFields = [
+                        '#edit_design_ids',
+                        '#edit_material_ids',
+                        '#edit_characteristic_ids'
+                    ];
+
+                    multiSelectFields.forEach(function(selector) {
+                        const $select = $(selector);
+                        if ($select.length > 0) {
+                            // Destroy existing Select2 instance if any
+                            if ($select.hasClass('select2-hidden-accessible')) {
+                                $select.select2('destroy');
+                            }
+
+                            // Get selected values from the option elements
+                            const selectedValues = [];
+                            $select.find('option:selected').each(function() {
+                                selectedValues.push($(this).val());
+                            });
+
+                            // Initialize Select2 with Bootstrap 5 theme
+                            $select.select2({
+                                theme: 'bootstrap-5',
+                                placeholder: 'Select options',
+                                allowClear: true,
+                                width: '100%',
+                                closeOnSelect: false
+                            });
+
+                            // Set selected values after initialization
+                            if (selectedValues.length > 0) {
+                                $select.val(selectedValues).trigger('change');
+                            }
+                        }
+                    });
+                }, 300);
+            }
+        });
+    </script>
 @endpush

@@ -510,9 +510,31 @@ class ProductVariantManager {
                 },
                 success: function (response) {
                     if (response.success) {
-                        // Remove variant from UI
-                        $(`.existing-variant-item[data-variant-id="${variantId}"]`).fadeOut(300, function () {
+                        // Remove variant from UI - handle both selectors
+                        const $variantItem = $(`.existing-variant-item[data-variant-id="${variantId}"], .variant-item[data-variant-id="${variantId}"]`);
+                        
+                        // Remove all hidden input fields related to this variant
+                        $(`input[name*="variants"][value="${variantId}"]`).remove();
+                        $(`input[name*="keep_${variantId}"]`).remove();
+                        
+                        $variantItem.fadeOut(300, function () {
                             $(this).remove();
+                            
+                            // Update variant count after removal
+                            const remainingVariants = $('.variant-item.existing-variant-item, .existing-variant-item').length;
+                            
+                            // Update the info alert if it exists
+                            const $infoAlert = $('.alert-info').filter(function() {
+                                return $(this).text().indexOf('Multi-Color Variant Product') !== -1;
+                            });
+                            if ($infoAlert.length) {
+                                $infoAlert.html(`<i class="bx bx-info-circle me-2"></i>This is a <strong>Multi-Color Variant Product</strong> with ${remainingVariants} color variant${remainingVariants !== 1 ? 's' : ''}.`);
+                            }
+                            
+                            // Update variant count display if it exists
+                            if ($('.variant-count').length) {
+                                $('.variant-count').text(remainingVariants);
+                            }
                         });
 
                         // Show success message
@@ -520,9 +542,50 @@ class ProductVariantManager {
                     }
                 }.bind(this),
                 error: function (xhr) {
-                    console.error('Error deleting variant:', xhr.responseText);
-                    alert('Error deleting variant');
-                }
+                    // Handle 404 - variant already deleted (desired state)
+                    if (xhr.status === 404) {
+                        // Remove variant from UI since it's already gone - handle both selectors
+                        const $variantItem = $(`.existing-variant-item[data-variant-id="${variantId}"], .variant-item[data-variant-id="${variantId}"]`);
+                        
+                        // Remove all hidden input fields related to this variant
+                        $(`input[name*="variants"][value="${variantId}"]`).remove();
+                        $(`input[name*="keep_${variantId}"]`).remove();
+                        
+                        $variantItem.fadeOut(300, function () {
+                            $(this).remove();
+                            
+                            // Update variant count after removal
+                            const remainingVariants = $('.variant-item.existing-variant-item, .existing-variant-item').length;
+                            
+                            // Update the info alert if it exists
+                            const $infoAlert = $('.alert-info').filter(function() {
+                                return $(this).text().indexOf('Multi-Color Variant Product') !== -1;
+                            });
+                            if ($infoAlert.length) {
+                                $infoAlert.html(`<i class="bx bx-info-circle me-2"></i>This is a <strong>Multi-Color Variant Product</strong> with ${remainingVariants} color variant${remainingVariants !== 1 ? 's' : ''}.`);
+                            }
+                            
+                            // Update variant count display if it exists
+                            if ($('.variant-count').length) {
+                                $('.variant-count').text(remainingVariants);
+                            }
+                        });
+                        this.showNotification('Variant was already deleted', 'info');
+                    } else {
+                        // Handle other errors
+                        console.error('Error deleting variant:', xhr.responseText);
+                        let errorMessage = 'Error deleting variant';
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.message) {
+                                errorMessage = response.message;
+                            }
+                        } catch (e) {
+                            // Use default error message
+                        }
+                        this.showNotification(errorMessage, 'error');
+                    }
+                }.bind(this)
             });
         }
     }

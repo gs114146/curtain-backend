@@ -711,6 +711,11 @@
                                 placeholder="e.g., 2.5kg" required>
                         </div>
                         <div class="col-md-6 mb-3">
+                            <label for="create_direction" class="form-label">Direction</label>
+                            <input type="text" class="form-control" id="create_direction" name="direction"
+                                placeholder="Enter direction">
+                        </div>
+                        <div class="col-md-6 mb-3">
                             <label for="create_design_ids" class="form-label">Designs <span
                                     class="text-danger">*</span></label>
                             <select class="form-select" id="create_design_ids" name="design_ids[]" multiple required>
@@ -772,6 +777,7 @@
                                 <option value="product_listing" selected>Product Listing</option>
                                 <option value="view_qualities">View Qualities</option>
                                 <option value="upholstery">Upholstery</option>
+                                <option value="latest">Latest</option>
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">

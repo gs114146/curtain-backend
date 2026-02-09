@@ -47,6 +47,15 @@
                                         Enter a unique hanger ID
                                     </div>
                                 </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="create_product_base" class="form-label">Product Base <span
+                                            class="text-danger">*</span></label>
+                                    <select class="form-select" id="create_product_base" name="product_base" required>
+                                        <option value="">Select Product Base</option>
+                                        <option value="curtain">Curtain</option>
+                                        <option value="upholstery">Upholstery</option>
+                                    </select>
+                                </div>
                                 <div class="col-12 mb-3">
                                     <label class="form-label">Product Image</label>
                                     <div class="product-image-upload p-3 rounded border d-flex align-items-center justify-content-center"
@@ -68,7 +77,7 @@
                                     <textarea class="form-control" id="create_description" name="description" rows="3" required></textarea>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="create_dimensions" class="form-label">Dimensions <span
+                                    <label for="create_dimensions" class="form-label">Width <span
                                             class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="create_dimensions" name="dimensions"
                                         placeholder="e.g., 120cm x 150cm" required>
@@ -91,11 +100,8 @@
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="create_direction" class="form-label">Direction</label>
-                                    <select class="form-select" id="create_direction" name="direction">
-                                        <option value="">Select Direction</option>
-                                        <option value="horizontal">Horizontal</option>
-                                        <option value="vertical">Vertical</option>
-                                    </select>
+                                    <input type="text" class="form-control" id="create_direction" name="direction"
+                                        placeholder="Enter direction">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="create_extra_data" class="form-label">Extra Data</label>
@@ -103,9 +109,10 @@
                                         placeholder="Enter extra data"></textarea>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="create_design_ids" class="form-label">Designs <span
+                                    <label for="create_design_ids" class="form-label">Design/Category <span
                                             class="text-danger">*</span></label>
-                                    <select class="form-select" id="create_design_ids" name="design_ids[]" multiple required>
+                                    <select class="form-select" id="create_design_ids" name="design_ids[]" multiple
+                                        required>
                                         @foreach ($designs as $design)
                                             <option value="{{ $design->id }}">{{ $design->name }}</option>
                                         @endforeach
@@ -114,17 +121,16 @@
                                 <div class="col-md-6 mb-3">
                                     <label for="create_material_ids" class="form-label">Materials <span
                                             class="text-danger">*</span></label>
-                                    <select class="form-select" id="create_material_ids" name="material_ids[]" multiple required>
+                                    <select class="form-select" id="create_material_ids" name="material_ids[]" multiple
+                                        required>
                                         @foreach ($materials as $material)
                                             <option value="{{ $material->id }}">{{ $material->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="create_transparency_id" class="form-label">Transparency <span
-                                            class="text-danger">*</span></label>
-                                    <select class="form-select" id="create_transparency_id" name="transparency_id"
-                                        required>
+                                    <label for="create_transparency_id" class="form-label">Transparency</label>
+                                    <select class="form-select" id="create_transparency_id" name="transparency_id">
                                         <option value="">Select Transparency</option>
                                         @foreach ($transparencies as $transparency)
                                             <option value="{{ $transparency->id }}">{{ $transparency->name }}</option>
@@ -134,8 +140,8 @@
                                 <div class="col-md-6 mb-3">
                                     <label for="create_characteristic_ids" class="form-label">Characteristics <span
                                             class="text-danger">*</span></label>
-                                    <select class="form-select" id="create_characteristic_ids" name="characteristic_ids[]"
-                                        multiple required>
+                                    <select class="form-select" id="create_characteristic_ids"
+                                        name="characteristic_ids[]" multiple required>
                                         @foreach ($characteristics as $characteristic)
                                             <option value="{{ $characteristic->id }}">{{ $characteristic->name }}</option>
                                         @endforeach
@@ -180,6 +186,7 @@
                                         <option value="product_listing" selected>Product Listing</option>
                                         <option value="view_qualities">View Qualities</option>
                                         <option value="upholstery">Upholstery</option>
+                                        <option value="latest">Latest</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">

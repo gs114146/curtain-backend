@@ -68,6 +68,17 @@
                                                     <option value="product_listing">Product Listing</option>
                                                     <option value="view_qualities">View Qualities</option>
                                                     <option value="upholstery">Upholstery</option>
+                                                    <option value="latest">Latest</option>
+                                                </select>
+                                            </div>
+
+                                            <!-- Product Base -->
+                                            <div class="col-md-3">
+                                                <label for="productBaseFilter" class="form-label">Product Base</label>
+                                                <select class="form-select" id="productBaseFilter">
+                                                    <option value="">All Bases</option>
+                                                    <option value="curtain">Curtain</option>
+                                                    <option value="upholstery">Upholstery</option>
                                                 </select>
                                             </div>
                                         </div>

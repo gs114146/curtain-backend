@@ -176,11 +176,12 @@ class ProductController extends Controller
                     'design_ids.*' => 'exists:designs,id',
                     'material_ids' => 'required|array|min:1',
                     'material_ids.*' => 'exists:materials,id',
-                    'transparency_id' => 'required|exists:transparency,id',
+                    'transparency_id' => 'nullable|exists:transparency,id',
                     'characteristic_ids' => 'required|array|min:1',
                     'characteristic_ids.*' => 'exists:characteristics,id',
                     'usage_id' => 'required|exists:usage,id',
-                    'type' => 'required|in:product_listing,view_qualities,upholstery',
+                    'type' => 'required|in:product_listing,view_qualities,upholstery,latest',
+                    'product_base' => 'required|in:curtain,upholstery',
                     'status' => 'in:active,inactive,draft',
                     'featured' => 'boolean',
                     'meta_title' => 'nullable|string|max:255',
@@ -250,11 +251,12 @@ class ProductController extends Controller
                     'design_ids.*' => 'exists:designs,id',
                     'material_ids' => 'required|array|min:1',
                     'material_ids.*' => 'exists:materials,id',
-                    'transparency_id' => 'required|exists:transparency,id',
+                    'transparency_id' => 'nullable|exists:transparency,id',
                     'characteristic_ids' => 'required|array|min:1',
                     'characteristic_ids.*' => 'exists:characteristics,id',
                     'usage_id' => 'required|exists:usage,id',
-                    'type' => 'required|in:product_listing,view_qualities,upholstery',
+                    'type' => 'required|in:product_listing,view_qualities,upholstery,latest',
+                    'product_base' => 'required|in:curtain,upholstery',
                     'status' => 'in:active,inactive,draft',
                     'featured' => 'boolean',
                     'in_stock' => 'boolean',
@@ -379,9 +381,9 @@ class ProductController extends Controller
         $isVariantProduct = $product->variants()->count() > 0;
 
         if ($isVariantProduct) {
-            $product->load(['design', 'material', 'transparency', 'characteristic', 'usage', 'variants.color', 'variants.media']);
+            $product->load(['design', 'material', 'transparency', 'characteristic', 'usage', 'designs', 'materials', 'characteristics', 'variants.color', 'variants.media']);
         } else {
-            $product->load(['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'media']);
+            $product->load(['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'designs', 'materials', 'characteristics', 'media']);
         }
 
         // Get related data for forms
@@ -459,7 +461,7 @@ class ProductController extends Controller
 
             if ($hasVariants) {
                 // Update with variants
-                $imageValidation = $product->image ? 'nullable' : 'required';
+                // Image is always nullable on update - user may not want to change it
 
                 // Build dynamic validation rules for variants
                 $variantRules = [
@@ -467,20 +469,24 @@ class ProductController extends Controller
                     'variants.*.id' => 'nullable|exists:product_variants,id',
                 ];
 
-                // For each variant, make color_id required only if it's a new variant (no id)
+                // For each variant, make fields required only if it's a new variant (no id)
                 foreach ($request->input('variants', []) as $index => $variant) {
                     if (isset($variant['id']) && !empty($variant['id'])) {
-                        // Existing variant - color_id is optional
+                        // Existing variant - fields are optional
                         $variantRules["variants.{$index}.color_id"] = 'nullable|exists:colors,id';
+                        $variantRules["variants.{$index}.article"] = 'nullable|string|max:255';
+                        $variantRules["variants.{$index}.article_description"] = 'nullable|string';
                     } else {
-                        // New variant - color_id is required
+                        // New variant - fields are required
                         $variantRules["variants.{$index}.color_id"] = 'required|exists:colors,id';
+                        $variantRules["variants.{$index}.article"] = 'required|string|max:255';
+                        $variantRules["variants.{$index}.article_description"] = 'required|string';
                     }
                 }
 
                 $request->validate(array_merge([
                     'name' => 'nullable|string|max:255',
-                    'image' => $imageValidation . '|image|mimes:jpeg,png,jpg,gif|max:2048',
+                    'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
                     'description' => 'required|string',
                     'manual_product_id' => 'required|string|max:255|unique:products,manual_product_id,' . $product->id,
                     'dimensions' => 'sometimes|required|string|max:255',
@@ -491,10 +497,11 @@ class ProductController extends Controller
                     'extra_data' => 'nullable|string',
                     'design_id' => 'sometimes|required|exists:designs,id',
                     'material_id' => 'sometimes|required|exists:materials,id',
-                    'transparency_id' => 'sometimes|required|exists:transparency,id',
+                    'transparency_id' => 'nullable|exists:transparency,id',
                     'characteristic_id' => 'sometimes|required|exists:characteristics,id',
                     'usage_id' => 'sometimes|required|exists:usage,id',
-                    'type' => 'required|in:product_listing,view_qualities,upholstery',
+                    'type' => 'required|in:product_listing,view_qualities,upholstery,latest',
+                    'product_base' => 'required|in:curtain,upholstery',
                     'status' => 'sometimes|in:active,inactive,draft',
                     'featured' => 'sometimes|boolean',
                     'meta_title' => 'nullable|string|max:255',
@@ -503,8 +510,6 @@ class ProductController extends Controller
                     'compositions' => 'nullable|string',
                     'hsn_code' => 'nullable|string|max:255',
                     'gst' => 'nullable|numeric|min:0|max:100',
-                    'variants.*.article' => 'required|string|max:255',
-                    'variants.*.article_description' => 'required|string',
                     'variants.*.price' => 'nullable|numeric|min:0',
                     'variants.*.sale_price' => 'nullable|numeric|min:0',
                     'variants.*.stock_quantity' => 'nullable|integer|min:0',
@@ -516,14 +521,19 @@ class ProductController extends Controller
                 ], $variantRules));
 
                 $data = $request->all();
-                
+
                 // Extract relationship IDs before removing from data
                 $designIds = $request->input('design_ids');
                 $materialIds = $request->input('material_ids');
                 $characteristicIds = $request->input('characteristic_ids');
-                
+
                 // Remove variants and relationship arrays from product data
                 unset($data['variants'], $data['design_ids'], $data['material_ids'], $data['characteristic_ids']);
+
+                // Remove image from data if no file is uploaded (to preserve existing image)
+                if (!$request->hasFile('image')) {
+                    unset($data['image']);
+                }
 
                 if ($request->has('name')) {
                     $data['slug'] = $this->createUniqueSlug($request->name, $product->id);
@@ -557,10 +567,10 @@ class ProductController extends Controller
                 }
             } else {
                 // Legacy product update
-                $imageValidation = $product->image ? 'nullable' : 'required';
+                // Image is always nullable on update - user may not want to change it
                 $request->validate([
                     'name' => 'nullable|string|max:255',
-                    'image' => $imageValidation . '|image|mimes:jpeg,png,jpg,gif|max:2048',
+                    'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
                     'description' => 'required|string',
                     'manual_product_id' => 'required|string|max:255|unique:products,manual_product_id,' . $product->id,
                     'price' => 'nullable|numeric|min:0',
@@ -577,11 +587,12 @@ class ProductController extends Controller
                     'design_ids.*' => 'exists:designs,id',
                     'material_ids' => 'sometimes|required|array|min:1',
                     'material_ids.*' => 'exists:materials,id',
-                    'transparency_id' => 'sometimes|required|exists:transparency,id',
+                    'transparency_id' => 'nullable|exists:transparency,id',
                     'characteristic_ids' => 'sometimes|required|array|min:1',
                     'characteristic_ids.*' => 'exists:characteristics,id',
                     'usage_id' => 'sometimes|required|exists:usage,id',
-                    'type' => 'required|in:product_listing,view_qualities,upholstery',
+                    'type' => 'required|in:product_listing,view_qualities,upholstery,latest',
+                    'product_base' => 'required|in:curtain,upholstery',
                     'status' => 'sometimes|in:active,inactive,draft',
                     'featured' => 'sometimes|boolean',
                     'in_stock' => 'sometimes|boolean',
@@ -602,6 +613,11 @@ class ProductController extends Controller
 
                 // Remove SKU and relationship arrays from update data to prevent changes for legacy products
                 unset($data['sku'], $data['design_ids'], $data['material_ids'], $data['characteristic_ids']);
+
+                // Remove image from data if no file is uploaded (to preserve existing image)
+                if (!$request->hasFile('image')) {
+                    unset($data['image']);
+                }
 
                 if ($request->has('name')) {
                     $data['slug'] = $this->createUniqueSlug($request->name, $product->id);
@@ -773,14 +789,6 @@ class ProductController extends Controller
                 'images' => 'nullable|array',
                 'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:10240'
             ]);
-
-            // Check if color variant already exists
-            if ($product->variants()->where('color_id', $request->color_id)->exists()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'A variant with this color already exists for this product.'
-                ], 422);
-            }
 
             $variantData = $request->all();
 
@@ -1172,6 +1180,11 @@ class ProductController extends Controller
         if (request()->has('type_filter') && !empty(request('type_filter'))) {
             $query->where('type', request('type_filter'));
         }
+
+        // Product base filter
+        if (request()->has('product_base_filter') && !empty(request('product_base_filter'))) {
+            $query->where('product_base', request('product_base_filter'));
+        }
     }
 
     /**
@@ -1549,14 +1562,16 @@ class ProductController extends Controller
             mkdir($thumbnailDir, 0755, true);
         }
 
-        // Save thumbnail based on mime type
+        // Save thumbnail based on mime type with improved quality
         switch ($mimeType) {
             case 'image/jpeg':
             case 'image/jpg':
-                imagejpeg($thumbnail, $fullThumbnailPath, 85);
+                // JPEG quality: 0-100, higher = better quality (90 for high quality thumbnails)
+                imagejpeg($thumbnail, $fullThumbnailPath, 80);
                 break;
             case 'image/png':
-                imagepng($thumbnail, $fullThumbnailPath, 8);
+                // PNG compression: 0-9, lower = better quality (0 = no compression, best quality)
+                imagepng($thumbnail, $fullThumbnailPath, 0);
                 break;
             case 'image/gif':
                 imagegif($thumbnail, $fullThumbnailPath);

@@ -621,13 +621,24 @@ text-decoration: underline;
                                 Enter a unique hanger ID
                             </div>
                         </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_product_base" class="form-label">Product Base <span
+                                    class="text-danger">*</span></label>
+                            <select class="form-select" id="edit_product_base" name="product_base" required>
+                                <option value="">Select Product Base</option>
+                                <option value="curtain" {{ $product->product_base == 'curtain' ? 'selected' : '' }}>
+                                    Curtain</option>
+                                <option value="upholstery"
+                                    {{ $product->product_base == 'upholstery' ? 'selected' : '' }}>Upholstery</option>
+                            </select>
+                        </div>
                         <div class="col-12 mb-3">
                             <label for="edit_description" class="form-label">Hanger Description <span
                                     class="text-danger">*</span></label>
                             <textarea class="form-control" id="edit_description" name="description" rows="3" required>{{ $product->description }}</textarea>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="edit_dimensions" class="form-label">Dimensions <span
+                            <label for="edit_dimensions" class="form-label">Width <span
                                     class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="edit_dimensions" name="dimensions"
                                 placeholder="e.g., 120cm x 150cm" value="{{ $product->dimensions }}" required>
@@ -646,18 +657,15 @@ text-decoration: underline;
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="edit_vertical_repeat" class="form-label">Vertical Repeat</label>
-                            <input type="text" class="form-control" id="edit_vertical_repeat" name="vertical_repeat"
-                                placeholder="Enter vertical repeat" value="{{ $product->vertical_repeat }}">
+                            <input type="text" class="form-control" id="edit_vertical_repeat"
+                                name="vertical_repeat" placeholder="Enter vertical repeat"
+                                value="{{ $product->vertical_repeat }}">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="edit_direction" class="form-label">Direction</label>
-                            <select class="form-select" id="edit_direction" name="direction">
-                                <option value="">Select Direction</option>
-                                <option value="horizontal"
-                                    {{ $product->direction == 'horizontal' ? 'selected' : '' }}>Horizontal</option>
-                                <option value="vertical" {{ $product->direction == 'vertical' ? 'selected' : '' }}>
-                                    Vertical</option>
-                            </select>
+                            <label for="edit_direction" class="form-label">Direction <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit_direction" name="direction"
+                                placeholder="Enter direction" value="{{ $product->direction }}" required>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="edit_extra_data" class="form-label">Extra Data</label>
@@ -665,7 +673,7 @@ text-decoration: underline;
                                 placeholder="Enter extra data">{{ $product->extra_data }}</textarea>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="edit_design_ids" class="form-label">Designs <span
+                            <label for="edit_design_ids" class="form-label">Design/Category <span
                                     class="text-danger">*</span></label>
                             <select class="form-select" id="edit_design_ids" name="design_ids[]" multiple required>
                                 @if (isset($designs))
@@ -680,7 +688,8 @@ text-decoration: underline;
                         <div class="col-md-6 mb-3">
                             <label for="edit_material_ids" class="form-label">Materials <span
                                     class="text-danger">*</span></label>
-                            <select class="form-select" id="edit_material_ids" name="material_ids[]" multiple required>
+                            <select class="form-select" id="edit_material_ids" name="material_ids[]" multiple
+                                required>
                                 @if (isset($materials))
                                     @foreach ($materials as $material)
                                         <option value="{{ $material->id }}"
@@ -691,9 +700,8 @@ text-decoration: underline;
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="edit_transparency_id" class="form-label">Transparency <span
-                                    class="text-danger">*</span></label>
-                            <select class="form-select" id="edit_transparency_id" name="transparency_id" required>
+                            <label for="edit_transparency_id" class="form-label">Transparency</label>
+                            <select class="form-select" id="edit_transparency_id" name="transparency_id">
                                 <option value="">Select Transparency</option>
                                 @if (isset($transparencies))
                                     @foreach ($transparencies as $transparency)
@@ -744,6 +752,8 @@ text-decoration: underline;
                                     {{ $product->type == 'view_qualities' ? 'selected' : '' }}>View Qualities</option>
                                 <option value="upholstery" {{ $product->type == 'upholstery' ? 'selected' : '' }}>
                                     Upholstery</option>
+                                <option value="latest" {{ $product->type == 'latest' ? 'selected' : '' }}>
+                                    Latest</option>
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">

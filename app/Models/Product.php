@@ -35,6 +35,7 @@ class Product extends Model
         'hsn_code',
         'gst',
         'type',
+        'product_base',
         'status',
         'featured',
         'in_stock',

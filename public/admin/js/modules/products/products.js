@@ -36,9 +36,9 @@ $(document).ready(function () {
     // Clear validation errors when modals are opened
     $('#createProductModal').on('show.bs.modal', function () {
         AdminUtils.clearValidationErrors();
-        loadRelatedData(function() {
+        loadRelatedData(function () {
             // Initialize Select2 after data is loaded
-            setTimeout(function() {
+            setTimeout(function () {
                 initializeSelect2();
             }, 100);
         });
@@ -46,9 +46,9 @@ $(document).ready(function () {
 
     $('#editProductModal').on('show.bs.modal', function () {
         AdminUtils.clearValidationErrors();
-        loadRelatedData(function() {
+        loadRelatedData(function () {
             // Initialize Select2 after data is loaded
-            setTimeout(function() {
+            setTimeout(function () {
                 initializeSelect2();
             }, 100);
         });
@@ -197,16 +197,16 @@ $(document).ready(function () {
             const isMultiSelect = $sel.prop('multiple');
             const currentVal = isMultiSelect ? $sel.val() || [] : $sel.val();
             $sel.empty();
-            
+
             // Only add empty option for single select
             if (!isMultiSelect) {
                 $sel.append('<option value="">' + ($sel.data('placeholder') || 'Select') + '</option>');
             }
-            
+
             items.forEach(function (item) {
                 $sel.append(`<option value="${item.id}">${item[textKey]}</option>`);
             });
-            
+
             // Restore selected values
             if (currentVal) {
                 if (isMultiSelect && Array.isArray(currentVal)) {
@@ -257,14 +257,17 @@ $(document).ready(function () {
             '#edit_characteristic_ids'
         ];
 
-        multiSelectFields.forEach(function(selector) {
+        multiSelectFields.forEach(function (selector) {
             const $select = $(selector);
             if ($select.length > 0) {
                 // Destroy existing Select2 instance if any
                 if ($select.hasClass('select2-hidden-accessible')) {
                     $select.select2('destroy');
                 }
-                
+
+                // Get selected values before initializing Select2
+                const selectedValues = $select.val() || [];
+
                 // Initialize Select2 with Bootstrap 5 theme
                 $select.select2({
                     theme: 'bootstrap-5',
@@ -273,6 +276,11 @@ $(document).ready(function () {
                     width: '100%',
                     closeOnSelect: false
                 });
+
+                // Set selected values after initialization
+                if (selectedValues.length > 0) {
+                    $select.val(selectedValues).trigger('change');
+                }
             }
         });
     }
@@ -936,7 +944,7 @@ $(document).ready(function () {
         });
 
         // All other filters
-        $('#colorFilter, #materialFilter, #designFilter, #typeFilter').on('change', function () {
+        $('#colorFilter, #materialFilter, #designFilter, #typeFilter, #productBaseFilter').on('change', function () {
             applyFilters();
         });
     }
@@ -951,7 +959,8 @@ $(document).ready(function () {
             color_filter: $('#colorFilter').val(),
             material_filter: $('#materialFilter').val(),
             design_filter: $('#designFilter').val(),
-            type_filter: $('#typeFilter').val()
+            type_filter: $('#typeFilter').val(),
+            product_base_filter: $('#productBaseFilter').val()
         };
 
         // Update DataTable with filters
@@ -979,6 +988,7 @@ $(document).ready(function () {
         $('#materialFilter').val('');
         $('#designFilter').val('');
         $('#typeFilter').val('');
+        $('#productBaseFilter').val('');
 
         // Reset DataTable to original URL
         if (productsTable) {
