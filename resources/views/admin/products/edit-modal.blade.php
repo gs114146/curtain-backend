@@ -626,8 +626,8 @@ text-decoration: underline;
                             <label for="edit_product_base" class="form-label">Product Base <span
                                     class="text-danger">*</span></label>
                             <select class="form-select" id="edit_product_base" name="product_base" required>
-                                <option value="">Select Product Base</option>
-                                <option value="curtain" {{ $product->product_base == 'curtain' ? 'selected' : '' }}>
+                                <option value="curtain"
+                                    {{ $product->product_base == 'curtain' || !$product->product_base ? 'selected' : '' }}>
                                     Curtain</option>
                                 <option value="upholstery"
                                     {{ $product->product_base == 'upholstery' ? 'selected' : '' }}>Upholstery</option>
@@ -731,7 +731,6 @@ text-decoration: underline;
                             <label for="edit_usage_id" class="form-label">Usage <span
                                     class="text-danger">*</span></label>
                             <select class="form-select" id="edit_usage_id" name="usage_id" required>
-                                <option value="">Select Usage</option>
                                 @if (isset($usage))
                                     @foreach ($usage as $usageItem)
                                         <option value="{{ $usageItem->id }}"
@@ -745,7 +744,6 @@ text-decoration: underline;
                             <label for="edit_type" class="form-label">Product Type <span
                                     class="text-danger">*</span></label>
                             <select class="form-select" id="edit_type" name="type" required>
-                                <option value="">Select Product Type</option>
                                 <option value="product_listing"
                                     {{ $product->type == 'product_listing' ? 'selected' : '' }}>Product Listing
                                 </option>
@@ -832,7 +830,6 @@ text-decoration: underline;
                                     <label for="edit_color_id" class="form-label">Color <span
                                             class="text-danger">*</span></label>
                                     <select class="form-select" id="edit_color_id" name="color_id" required>
-                                        <option value="">Select Color</option>
                                         @if (isset($colors))
                                             @foreach ($colors as $color)
                                                 <option value="{{ $color->id }}"
@@ -996,7 +993,7 @@ text-decoration: underline;
                                                         class="badge bg-primary bg-opacity-10 text-primary me-2">JPG</span>
                                                     <span
                                                         class="badge bg-primary bg-opacity-10 text-primary me-2">JPEG</span>
-                                                    <span class="text-muted small">Max 10MB</span>
+                                                    <span class="text-muted small">Max 8MB</span>
                                                 </div>
                                             </div>
                                         </div>

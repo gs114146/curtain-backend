@@ -3,18 +3,41 @@ var DataTablesProductsConfig = {
         return $('#productsTable').DataTable({
             processing: true,
             serverSide: true,
+            autoWidth: false,
+            scrollX: false,
             ajax: {
                 url: window.routes.admin.products.index,
                 type: 'GET'
             },
             columns: [
-                { data: 'name', name: 'name' },
-                { data: 'variants', name: 'variants', defaultContent: '-', orderable: false, searchable: false },
-                { data: 'price_range', name: 'price_range', defaultContent: '-' },
-                { data: 'stock_total', name: 'stock_total', defaultContent: 0 },
+                {
+                    data: 'name',
+                    name: 'name',
+                    width: '20%',
+                    render: function (data) {
+                        if (!data) return '-';
+                        return `<span class="products-cell-text" title="${$('<div>').text(data).html()}">${$('<div>').text(data).html()}</span>`;
+                    }
+                },
+                {
+                    data: 'variants',
+                    name: 'variants',
+                    defaultContent: '-',
+                    orderable: false,
+                    searchable: false,
+                    width: '30%',
+                    render: function (data) {
+                        if (!data) return '-';
+                        const safe = $('<div>').text(data).html();
+                        return `<span class="products-cell-text" title="${safe}">${safe}</span>`;
+                    }
+                },
+                { data: 'price_range', name: 'price_range', defaultContent: '-', width: '15%' },
+                { data: 'stock_total', name: 'stock_total', defaultContent: 0, width: '10%' },
                 {
                     data: 'status',
                     name: 'status',
+                    width: '10%',
                     render: function (data) {
                         const badgeClass = data === 'active' ? 'success' : data === 'draft' ? 'warning' : 'secondary';
                         return `<span class="badge bg-${badgeClass}">${data}</span>`;
@@ -25,6 +48,7 @@ var DataTablesProductsConfig = {
                     name: 'actions',
                     orderable: false,
                     searchable: false,
+                    width: '15%',
                     render: function (data) {
                         const editUrl = window.routes.admin.products.edit.replace(':id', data);
                         return `

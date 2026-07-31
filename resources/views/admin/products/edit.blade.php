@@ -75,7 +75,7 @@
                                         <div class="text-center">
                                             <i class="bx bx-cloud-upload me-2" style="font-size: 24px; color: #6c757d;"></i>
                                             <div>Click to upload image or drag & drop</div>
-                                            <small class="text-muted">PNG, JPG, GIF up to 10MB</small>
+                                            <small class="text-muted">PNG, JPG, GIF up to 8MB</small>
                                         </div>
                                         <input type="file" id="productImageInput" name="image" accept="image/*"
                                             style="display: none;">
@@ -185,7 +185,6 @@
                                     <label for="edit_usage_id" class="form-label">Usage <span
                                             class="text-danger">*</span></label>
                                     <select class="form-select" id="edit_usage_id" name="usage_id" required>
-                                        <option value="">Select Usage</option>
                                         @foreach ($usage as $usageItem)
                                             <option value="{{ $usageItem->id }}"
                                                 {{ $product->usage_id == $usageItem->id ? 'selected' : '' }}>
@@ -219,7 +218,6 @@
                                     <label for="edit_type" class="form-label">Product Type <span
                                             class="text-danger">*</span></label>
                                     <select class="form-select" id="edit_type" name="type" required>
-                                        <option value="">Select Product Type</option>
                                         <option value="product_listing"
                                             {{ $product->type == 'product_listing' ? 'selected' : '' }}>Product Listing
                                         </option>
@@ -236,9 +234,8 @@
                                     <label for="edit_product_base" class="form-label">Product Base <span
                                             class="text-danger">*</span></label>
                                     <select class="form-select" id="edit_product_base" name="product_base" required>
-                                        <option value="">Select Product Base</option>
                                         <option value="curtain"
-                                            {{ $product->product_base == 'curtain' ? 'selected' : '' }}>Curtain</option>
+                                            {{ $product->product_base == 'curtain' || !$product->product_base ? 'selected' : '' }}>Curtain</option>
                                         <option value="upholstery"
                                             {{ $product->product_base == 'upholstery' ? 'selected' : '' }}>Upholstery
                                         </option>
@@ -289,7 +286,6 @@
                                         <label for="edit_color_id" class="form-label">Color <span
                                                 class="text-danger">*</span></label>
                                         <select class="form-select" id="edit_color_id" name="color_id" required>
-                                            <option value="">Select Color</option>
                                             @foreach ($colors as $color)
                                                 <option value="{{ $color->id }}"
                                                     {{ $product->color_id == $color->id ? 'selected' : '' }}>
@@ -352,7 +348,6 @@
                                                                     <select class="form-select variant-color-select"
                                                                         name="variants[{{ $idx }}][color_id]"
                                                                         required>
-                                                                        <option value="">Select Color</option>
                                                                         @foreach ($colors as $color)
                                                                             <option value="{{ $color->id }}"
                                                                                 data-color-value="{{ $color->color_value }}"
@@ -401,6 +396,7 @@
                                                                             name="variants[{{ $idx }}][images][]"
                                                                             accept="image/*" style="display: none;">
                                                                     </div>
+                                                                    <div class="text-muted small mt-1">PNG, JPG, GIF up to 8MB</div>
                                                                     <div class="variant-error-message text-danger small mt-1"
                                                                         style="display:none;">An image is required for this
                                                                         variant.</div>

@@ -156,6 +156,27 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         try {
+            // Empty optional numeric fields come as "" from forms — coerce to null
+            foreach (['price', 'sale_price', 'stock_quantity', 'gst'] as $numericField) {
+                if ($request->has($numericField) && $request->input($numericField) === '') {
+                    $request->merge([$numericField => null]);
+                }
+            }
+
+            if (is_array($request->input('variants'))) {
+                $variants = $request->input('variants');
+                foreach ($variants as $index => $variant) {
+                    foreach (['price', 'sale_price', 'stock_quantity'] as $numericField) {
+                        if (array_key_exists($numericField, $variant) && $variant[$numericField] === '') {
+                            $variants[$index][$numericField] = null;
+                        }
+                    }
+                }
+                $request->merge(['variants' => $variants]);
+            }
+
+            $this->assertProductImagesUploaded($request);
+
             // Check if this is a variant-based product or legacy product
             $hasVariants = $request->has('variants') && is_array($request->variants) && count($request->variants) > 0;
 
@@ -163,7 +184,7 @@ class ProductController extends Controller
                 // New variant-based product
                 $request->validate([
                     'name' => 'required|string|max:255',
-                    'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
+                    'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:8192',
                     'description' => 'required|string',
                     'manual_product_id' => 'required|string|max:255|unique:products,manual_product_id',
                     'dimensions' => 'required|string|max:255',
@@ -182,7 +203,7 @@ class ProductController extends Controller
                     'usage_id' => 'required|exists:usage,id',
                     'type' => 'required|in:product_listing,view_qualities,upholstery,latest',
                     'product_base' => 'required|in:curtain,upholstery',
-                    'status' => 'in:active,inactive,draft',
+                    'status' => 'nullable|in:active,inactive,draft',
                     'featured' => 'boolean',
                     'meta_title' => 'nullable|string|max:255',
                     'meta_description' => 'nullable|string',
@@ -200,8 +221,8 @@ class ProductController extends Controller
                     'variants.*.sku' => 'nullable|string',
                     'variants.*.is_default' => 'boolean',
                     'variants.*.images' => 'nullable|array',
-                    'variants.*.images.*' => 'image|mimes:jpeg,png,jpg,gif|max:10240'
-                ]);
+                    'variants.*.images.*' => 'image|mimes:jpeg,png,jpg,gif|max:8192'
+                ], $this->productImageValidationMessages());
 
                 $data = $request->all();
                 $data['slug'] = $this->createUniqueSlug($request->name);
@@ -233,7 +254,7 @@ class ProductController extends Controller
                 // Legacy product with single color
                 $request->validate([
                     'name' => 'required|string|max:255',
-                    'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
+                    'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:8192',
                     'description' => 'required|string',
                     'sku' => 'nullable|string|unique:products,sku',
                     'manual_product_id' => 'required|string|max:255|unique:products,manual_product_id',
@@ -257,7 +278,7 @@ class ProductController extends Controller
                     'usage_id' => 'required|exists:usage,id',
                     'type' => 'required|in:product_listing,view_qualities,upholstery,latest',
                     'product_base' => 'required|in:curtain,upholstery',
-                    'status' => 'in:active,inactive,draft',
+                    'status' => 'nullable|in:active,inactive,draft',
                     'featured' => 'boolean',
                     'in_stock' => 'boolean',
                     'meta_title' => 'nullable|string|max:255',
@@ -266,7 +287,7 @@ class ProductController extends Controller
                     'compositions' => 'nullable|string',
                     'hsn_code' => 'nullable|string|max:255',
                     'gst' => 'nullable|numeric|min:0|max:100',
-                ]);
+                ], $this->productImageValidationMessages());
 
                 $data = $request->all();
                 $data['slug'] = $this->createUniqueSlug($request->name);
@@ -317,7 +338,7 @@ class ProductController extends Controller
                 }
             }
 
-            if ($request->ajax()) {
+            if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
                 $loadRelations = $hasVariants
                     ? ['design', 'material', 'transparency', 'characteristic', 'usage', 'variants.color', 'variants.media']
                     : ['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'media'];
@@ -331,7 +352,7 @@ class ProductController extends Controller
 
             return redirect()->route('admin.products.index')->with('success', 'Product created successfully.');
         } catch (\Illuminate\Validation\ValidationException $e) {
-            if ($request->ajax()) {
+            if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation failed.',
@@ -340,7 +361,7 @@ class ProductController extends Controller
             }
             throw $e;
         } catch (\Exception $e) {
-            if ($request->ajax()) {
+            if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'An error occurred while creating the product.',
@@ -441,6 +462,13 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         try {
+            // Empty optional numeric fields come as "" from forms — coerce to null
+            foreach (['price', 'sale_price', 'stock_quantity', 'gst'] as $numericField) {
+                if ($request->has($numericField) && $request->input($numericField) === '') {
+                    $request->merge([$numericField => null]);
+                }
+            }
+
             // Normalize variants: remove placeholders like variants[keep_*] used to preserve existing variants
             if ($request->has('variants') && is_array($request->variants)) {
                 $normalizedVariants = [];
@@ -455,6 +483,9 @@ class ProductController extends Controller
                 }
                 $request->merge(['variants' => $normalizedVariants]);
             }
+
+            $this->assertProductImagesUploaded($request);
+
             // Check if this is a variant-based product or legacy product
             $hasVariants = $request->has('variants') && is_array($request->variants) && count($request->variants) > 0;
             $isLegacyProduct = $product->color_id !== null;
@@ -486,7 +517,7 @@ class ProductController extends Controller
 
                 $request->validate(array_merge([
                     'name' => 'required|string|max:255',
-                    'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                    'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:8192',
                     'description' => 'required|string',
                     'manual_product_id' => 'required|string|max:255|unique:products,manual_product_id,' . $product->id,
                     'dimensions' => 'sometimes|required|string|max:255',
@@ -517,8 +548,8 @@ class ProductController extends Controller
                     'variants.*.is_default' => 'boolean',
                     'variants.*.status' => 'sometimes|in:active,inactive,draft',
                     'variants.*.images' => 'nullable|array',
-                    'variants.*.images.*' => 'image|mimes:jpeg,png,jpg,gif|max:10240'
-                ], $variantRules));
+                    'variants.*.images.*' => 'image|mimes:jpeg,png,jpg,gif|max:8192'
+                ], $variantRules), $this->productImageValidationMessages());
 
                 $data = $request->all();
 
@@ -570,7 +601,7 @@ class ProductController extends Controller
                 // Image is always nullable on update - user may not want to change it
                 $request->validate([
                     'name' => 'required|string|max:255',
-                    'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                    'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:8192',
                     'description' => 'required|string',
                     'manual_product_id' => 'required|string|max:255|unique:products,manual_product_id,' . $product->id,
                     'price' => 'nullable|numeric|min:0',
@@ -602,7 +633,7 @@ class ProductController extends Controller
                     'compositions' => 'nullable|string',
                     'hsn_code' => 'nullable|string|max:255',
                     'gst' => 'nullable|numeric|min:0|max:100',
-                ]);
+                ], $this->productImageValidationMessages());
 
                 $data = $request->all();
 
@@ -697,7 +728,7 @@ class ProductController extends Controller
                 }
             }
 
-            if ($request->ajax()) {
+            if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
                 $loadRelations = $hasVariants || $product->variants()->count() > 0
                     ? ['design', 'material', 'transparency', 'characteristic', 'usage', 'variants.color', 'variants.media', 'media']
                     : ['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'media'];
@@ -711,7 +742,7 @@ class ProductController extends Controller
 
             return redirect()->route('admin.products.index')->with('success', 'Product updated successfully.');
         } catch (\Illuminate\Validation\ValidationException $e) {
-            if ($request->ajax()) {
+            if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation failed.',
@@ -720,7 +751,7 @@ class ProductController extends Controller
             }
             throw $e;
         } catch (\Exception $e) {
-            if ($request->ajax()) {
+            if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'An error occurred while updating the product.',
@@ -787,8 +818,8 @@ class ProductController extends Controller
                 'sku' => 'nullable|string',
                 'is_default' => 'boolean',
                 'images' => 'nullable|array',
-                'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:10240'
-            ]);
+                'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:8192'
+            ], $this->productImageValidationMessages());
 
             $variantData = $request->all();
 
@@ -846,8 +877,8 @@ class ProductController extends Controller
                 'is_default' => 'boolean',
                 'status' => 'sometimes|in:active,inactive,draft',
                 'images' => 'nullable|array',
-                'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:10240'
-            ]);
+                'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:8192'
+            ], $this->productImageValidationMessages());
 
             $data = $request->all();
 
@@ -967,6 +998,82 @@ class ProductController extends Controller
         }
 
         return $sku;
+    }
+
+    /**
+     * Shared validation messages for product / variant images (8MB max).
+     */
+    private function productImageValidationMessages(): array
+    {
+        return [
+            'image.uploaded' => 'Image upload failed. Use a PNG, JPG, or GIF under 8MB.',
+            'image.max' => 'Image must be less than 8MB.',
+            'image.image' => 'File must be a valid image (PNG, JPG, or GIF).',
+            'image.mimes' => 'Image must be PNG, JPG, or GIF.',
+            'variants.*.images.*.uploaded' => 'Variant image upload failed. Use a PNG, JPG, or GIF under 8MB.',
+            'variants.*.images.*.max' => 'Variant image must be less than 8MB.',
+            'variants.*.images.*.image' => 'Variant file must be a valid image (PNG, JPG, or GIF).',
+            'variants.*.images.*.mimes' => 'Variant image must be PNG, JPG, or GIF.',
+            'images.*.uploaded' => 'Image upload failed. Use a PNG, JPG, or GIF under 8MB.',
+            'images.*.max' => 'Image must be less than 8MB.',
+            'images.*.image' => 'File must be a valid image (PNG, JPG, or GIF).',
+            'images.*.mimes' => 'Image must be PNG, JPG, or GIF.',
+        ];
+    }
+
+    /**
+     * Map PHP upload error codes to clear user-facing messages.
+     * "The image failed to upload" is too vague — often means file > upload_max_filesize.
+     */
+    private function explainUploadError(\Illuminate\Http\UploadedFile $file): string
+    {
+        $maxUpload = ini_get('upload_max_filesize') ?: '8M';
+        $maxPost = ini_get('post_max_size') ?: '8M';
+
+        return match ($file->getError()) {
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => "Image is too large for the server. Max upload is {$maxUpload} (app limit 8MB). Compress the image and try again.",
+            UPLOAD_ERR_PARTIAL => 'Image was only partially uploaded. Please try again.',
+            UPLOAD_ERR_NO_FILE => 'No image file was received. Please select an image again.',
+            UPLOAD_ERR_NO_TMP_DIR => 'Server temp folder is missing. Contact the administrator.',
+            UPLOAD_ERR_CANT_WRITE => 'Server could not save the uploaded image. Contact the administrator.',
+            UPLOAD_ERR_EXTENSION => 'A PHP extension blocked the image upload. Contact the administrator.',
+            default => "Image upload failed (error {$file->getError()}). Use a PNG, JPG, or GIF under 8MB. Server upload_max={$maxUpload}, post_max={$maxPost}.",
+        };
+    }
+
+    /**
+     * Throw a clear ValidationException if any product/variant image failed at PHP upload level.
+     */
+    private function assertProductImagesUploaded(Request $request): void
+    {
+        $errors = [];
+
+        $image = $request->files->get('image');
+        if ($image instanceof \Illuminate\Http\UploadedFile && !$image->isValid() && $image->getError() !== UPLOAD_ERR_NO_FILE) {
+            $errors['image'] = [$this->explainUploadError($image)];
+        }
+
+        $variants = $request->files->get('variants');
+        if (is_array($variants)) {
+            foreach ($variants as $index => $variantFiles) {
+                if (!is_array($variantFiles) || !isset($variantFiles['images'])) {
+                    continue;
+                }
+                $images = $variantFiles['images'];
+                if (!is_array($images)) {
+                    $images = [$images];
+                }
+                foreach ($images as $imgIndex => $img) {
+                    if ($img instanceof \Illuminate\Http\UploadedFile && !$img->isValid() && $img->getError() !== UPLOAD_ERR_NO_FILE) {
+                        $errors["variants.{$index}.images.{$imgIndex}"] = [$this->explainUploadError($img)];
+                    }
+                }
+            }
+        }
+
+        if (!empty($errors)) {
+            throw \Illuminate\Validation\ValidationException::withMessages($errors);
+        }
     }
 
     /**
@@ -1157,23 +1264,63 @@ class ProductController extends Controller
             $query->where(function ($q) use ($searchValue) {
                 $q->where('name', 'like', "%{$searchValue}%")
                     ->orWhere('sku', 'like', "%{$searchValue}%")
+                    ->orWhere('manual_product_id', 'like', "%{$searchValue}%")
                     ->orWhere('description', 'like', "%{$searchValue}%");
             });
         }
 
-        // Color filter
+        // Color filter (legacy color_id OR variant colors)
         if (request()->has('color_filter') && !empty(request('color_filter'))) {
-            $query->where('color_id', request('color_filter'));
+            $colorId = request('color_filter');
+            $query->where(function ($q) use ($colorId) {
+                $q->where('color_id', $colorId)
+                    ->orWhereHas('variants', function ($vq) use ($colorId) {
+                        $vq->where('color_id', $colorId);
+                    });
+            });
         }
 
-        // Material filter
+        // Material filter (legacy material_id OR many-to-many)
         if (request()->has('material_filter') && !empty(request('material_filter'))) {
-            $query->where('material_id', request('material_filter'));
+            $materialId = request('material_filter');
+            $query->where(function ($q) use ($materialId) {
+                $q->where('material_id', $materialId)
+                    ->orWhereHas('materials', function ($mq) use ($materialId) {
+                        $mq->where('materials.id', $materialId);
+                    });
+            });
         }
 
-        // Design filter
+        // Design filter (legacy design_id OR many-to-many)
         if (request()->has('design_filter') && !empty(request('design_filter'))) {
-            $query->where('design_id', request('design_filter'));
+            $designId = request('design_filter');
+            $query->where(function ($q) use ($designId) {
+                $q->where('design_id', $designId)
+                    ->orWhereHas('designs', function ($dq) use ($designId) {
+                        $dq->where('designs.id', $designId);
+                    });
+            });
+        }
+
+        // Transparency filter
+        if (request()->has('transparency_filter') && !empty(request('transparency_filter'))) {
+            $query->where('transparency_id', request('transparency_filter'));
+        }
+
+        // Characteristics filter (legacy characteristic_id OR many-to-many)
+        if (request()->has('characteristic_filter') && !empty(request('characteristic_filter'))) {
+            $characteristicId = request('characteristic_filter');
+            $query->where(function ($q) use ($characteristicId) {
+                $q->where('characteristic_id', $characteristicId)
+                    ->orWhereHas('characteristics', function ($cq) use ($characteristicId) {
+                        $cq->where('characteristics.id', $characteristicId);
+                    });
+            });
+        }
+
+        // Usage filter
+        if (request()->has('usage_filter') && !empty(request('usage_filter'))) {
+            $query->where('usage_id', request('usage_filter'));
         }
 
         // Product type filter
@@ -1184,6 +1331,11 @@ class ProductController extends Controller
         // Product base filter
         if (request()->has('product_base_filter') && !empty(request('product_base_filter'))) {
             $query->where('product_base', request('product_base_filter'));
+        }
+
+        // Status filter
+        if (request()->has('status_filter') && !empty(request('status_filter'))) {
+            $query->where('status', request('status_filter'));
         }
     }
 
@@ -1226,11 +1378,16 @@ class ProductController extends Controller
             }
 
             $variantData['sort_order'] = $sortOrder;
+
+            // Images are UploadedFile objects — keep aside for media handling
+            $images = $variantData['images'] ?? null;
+            unset($variantData['images']);
+
             $variant = $product->variants()->create($variantData);
 
             // Handle variant images
-            if (isset($variantData['images']) && is_array($variantData['images'])) {
-                $this->handleVariantImageUploads($variantData['images'], $variant);
+            if (is_array($images) && !empty($images)) {
+                $this->handleVariantImageUploads($images, $variant);
             }
         }
 

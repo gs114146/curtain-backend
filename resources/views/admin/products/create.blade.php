@@ -52,8 +52,7 @@
                                     <label for="create_product_base" class="form-label">Product Base <span
                                             class="text-danger">*</span></label>
                                     <select class="form-select" id="create_product_base" name="product_base" required>
-                                        <option value="">Select Product Base</option>
-                                        <option value="curtain">Curtain</option>
+                                        <option value="curtain" selected>Curtain</option>
                                         <option value="upholstery">Upholstery</option>
                                     </select>
                                 </div>
@@ -64,7 +63,7 @@
                                         <div class="text-center">
                                             <i class="bx bx-cloud-upload me-2" style="font-size: 24px; color: #6c757d;"></i>
                                             <div>Click to upload image or drag & drop</div>
-                                            <small class="text-muted">PNG, JPG, GIF up to 10MB (Optional)</small>
+                                            <small class="text-muted">PNG, JPG, GIF up to 8MB (Optional)</small>
                                         </div>
                                         <input type="file" id="productImageInput" name="image" accept="image/*"
                                             style="display: none;">
@@ -152,7 +151,6 @@
                                     <label for="create_usage_id" class="form-label">Usage <span
                                             class="text-danger">*</span></label>
                                     <select class="form-select" id="create_usage_id" name="usage_id" required>
-                                        <option value="">Select Usage</option>
                                         @foreach ($usage as $usageItem)
                                             <option value="{{ $usageItem->id }}">{{ $usageItem->name }}</option>
                                         @endforeach
@@ -183,7 +181,6 @@
                                     <label for="create_type" class="form-label">Product Type <span
                                             class="text-danger">*</span></label>
                                     <select class="form-select" id="create_type" name="type" required>
-                                        <option value="">Select Product Type</option>
                                         <option value="product_listing" selected>Product Listing</option>
                                         <option value="view_qualities">View Qualities</option>
                                         <option value="upholstery">Upholstery</option>

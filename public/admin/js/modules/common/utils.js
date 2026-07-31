@@ -139,6 +139,8 @@ class AdminUtils {
     static clearValidationErrors() {
         $('.is-invalid').removeClass('is-invalid');
         $('.invalid-feedback').remove();
+        $('.product-image-error').hide().text('');
+        $('.product-image-upload').css('border-color', '');
     }
 
     /**

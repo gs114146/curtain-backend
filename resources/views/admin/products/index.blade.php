@@ -14,81 +14,72 @@
                         </a>
                     </div>
                     <div class="card-body">
-                        <!-- Filters Section -->
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h6 class="card-title mb-0">
-                                            <i class="bx bx-filter"></i> Filters
-                                            <button class="btn btn-sm btn-outline-secondary ms-2" id="clearFilters">
-                                                <i class="bx bx-x"></i> Clear All
-                                            </button>
-                                        </h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row mb-5">
-                                            <!-- Search -->
-                                            {{-- <div class="col-md-4">
-                                                <label for="searchFilter" class="form-label">Search</label>
-                                                <input type="text" class="form-control" id="searchFilter"
-                                                    placeholder="Search by name, SKU...">
-                                            </div> --}}
-                                        </div>
-                                        <div class="row g-3">
-                                            <!-- Color Filter -->
-                                            <div class="col-md-3">
-                                                <label for="colorFilter" class="form-label">Color</label>
-                                                <select class="form-select" id="colorFilter">
-                                                    <option value="">All Colors</option>
-                                                </select>
-                                            </div>
-
-                                            <!-- Material Filter -->
-                                            <div class="col-md-3">
-                                                <label for="materialFilter" class="form-label">Material</label>
-                                                <select class="form-select" id="materialFilter">
-                                                    <option value="">All Materials</option>
-                                                </select>
-                                            </div>
-
-                                            <!-- Design Filter -->
-                                            <div class="col-md-3">
-                                                <label for="designFilter" class="form-label">Design</label>
-                                                <select class="form-select" id="designFilter">
-                                                    <option value="">All Designs</option>
-                                                </select>
-                                            </div>
-
-                                            <!-- Product Type -->
-                                            <div class="col-md-3">
-                                                <label for="typeFilter" class="form-label">Product Type</label>
-                                                <select class="form-select" id="typeFilter">
-                                                    <option value="">All Types</option>
-                                                    <option value="product_listing">Product Listing</option>
-                                                    <option value="view_qualities">View Qualities</option>
-                                                    <option value="upholstery">Upholstery</option>
-                                                    <option value="latest">Latest</option>
-                                                </select>
-                                            </div>
-
-                                            <!-- Product Base -->
-                                            <div class="col-md-3">
-                                                <label for="productBaseFilter" class="form-label">Product Base</label>
-                                                <select class="form-select" id="productBaseFilter">
-                                                    <option value="">All Bases</option>
-                                                    <option value="curtain">Curtain</option>
-                                                    <option value="upholstery">Upholstery</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
+                        <!-- Professional filter toolbar -->
+                        <div class="products-filter-toolbar mb-4" id="productsFilterToolbar">
+                            <div class="products-filter-main">
+                                <div class="products-search-wrap">
+                                    <i class="bx bx-search products-search-icon"></i>
+                                    <input type="text" class="form-control products-search-input" id="searchFilter"
+                                        placeholder="Search by name, SKU, or hanger ID..." autocomplete="off">
+                                    <button type="button" class="products-search-clear" id="clearSearchBtn" title="Clear search" style="display:none;">
+                                        <i class="bx bx-x"></i>
+                                    </button>
                                 </div>
+
+                                <div class="products-filter-primary">
+                                    <select class="form-select form-select-sm" id="colorFilter" data-filter-label="Color">
+                                        <option value="">Color</option>
+                                    </select>
+                                    <select class="form-select form-select-sm" id="materialFilter" data-filter-label="Material">
+                                        <option value="">Material</option>
+                                    </select>
+                                    <select class="form-select form-select-sm" id="designFilter" data-filter-label="Design">
+                                        <option value="">Design</option>
+                                    </select>
+                                    <select class="form-select form-select-sm" id="transparencyFilter" data-filter-label="Transparency">
+                                        <option value="">Transparency</option>
+                                    </select>
+                                    <select class="form-select form-select-sm" id="characteristicFilter" data-filter-label="Characteristic">
+                                        <option value="">Characteristics</option>
+                                    </select>
+                                    <select class="form-select form-select-sm" id="usageFilter" data-filter-label="Usage">
+                                        <option value="">Usage</option>
+                                    </select>
+                                    <select class="form-select form-select-sm" id="typeFilter" data-filter-label="Type">
+                                        <option value="">Type</option>
+                                        <option value="product_listing">Product Listing</option>
+                                        <option value="view_qualities">View Qualities</option>
+                                        <option value="upholstery">Upholstery</option>
+                                        <option value="latest">Latest</option>
+                                    </select>
+                                    <select class="form-select form-select-sm" id="productBaseFilter" data-filter-label="Base">
+                                        <option value="">Base</option>
+                                        <option value="curtain">Curtain</option>
+                                        <option value="upholstery">Upholstery</option>
+                                    </select>
+                                    <select class="form-select form-select-sm" id="statusFilter" data-filter-label="Status">
+                                        <option value="">Status</option>
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                        <option value="draft">Draft</option>
+                                    </select>
+                                </div>
+
+                                <div class="products-filter-actions">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" id="clearFilters" style="display:none;">
+                                        <i class="bx bx-x me-1"></i> Clear
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="products-filter-chips" id="activeFilterChips" style="display:none;">
+                                <span class="products-filter-count" id="activeFilterCount">0 filters</span>
+                                <div class="products-filter-chip-list" id="activeFilterChipList"></div>
                             </div>
                         </div>
 
-                        <div class="table-responsive">
-                            <table class="table table-bordered" id="productsTable">
+                        <div class="products-table-wrap">
+                            <table class="table table-bordered w-100" id="productsTable">
                                 <thead>
                                     <tr>
                                         <th>Name</th>

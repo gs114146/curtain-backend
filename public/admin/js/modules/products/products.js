@@ -8,6 +8,66 @@ $(document).ready(function () {
     let deleteProductId = null;
     let relatedData = null;
 
+    /**
+     * Show server validation errors in the right place.
+     * Product image uses .product-image-error BELOW the upload box (not inside it).
+     */
+    function showProductFieldError(field, msg, formPrefix) {
+        // Clarify generic Laravel upload failure
+        if (/failed to upload/i.test(msg)) {
+            msg = 'Image upload failed. Use a PNG, JPG, or GIF under 8MB.';
+        }
+
+        // Main product image → dedicated error slot under upload area
+        if (field === 'image') {
+            const $error = $('.product-image-error');
+            $error.text(msg).show();
+            $('.product-image-upload').css('border-color', '#dc3545');
+            return;
+        }
+
+        // Variant image: variants.1.images.0
+        const variantImageMatch = field.match(/^variants\.(\d+)\.images/);
+        if (variantImageMatch) {
+            const idx = variantImageMatch[1];
+            const $variant = $(`.variant-item[data-variant-index="${idx}"]`);
+            const $error = $variant.find('.variant-error-message');
+            if ($error.length) {
+                $error.text(msg).show();
+            }
+            $variant.find('.variant-image-upload').css('border-color', '#dc3545');
+            return;
+        }
+
+        const bracketName = field.split('.').reduce(function (name, part, idx) {
+            return idx === 0 ? part : name + '[' + part + ']';
+        }, '');
+
+        let $input = $('#' + formPrefix + '_' + field);
+        if ($input.length === 0) {
+            $input = $('[name="' + field + '"]');
+        }
+        if ($input.length === 0) {
+            $input = $('[name="' + bracketName + '"]');
+        }
+        if ($input.length === 0) {
+            $input = $('[name="' + bracketName + '[]"]');
+        }
+        if ($input.length) {
+            $input.addClass('is-invalid');
+            // Never inject feedback inside hidden file inputs sitting in upload boxes
+            if ($input.attr('type') === 'file') {
+                return;
+            }
+            if ($input.next('.invalid-feedback').length === 0) {
+                $input.after('<div class="invalid-feedback d-block">' + msg + '</div>');
+            }
+            if ($input.hasClass('select2-hidden-accessible')) {
+                $input.next('.select2-container').addClass('is-invalid');
+            }
+        }
+    }
+
     // Debug: Check what's available
     console.log('Products.js loaded');
     console.log('DataTablesProductsConfig available:', typeof DataTablesProductsConfig);
@@ -198,8 +258,8 @@ $(document).ready(function () {
             const currentVal = isMultiSelect ? $sel.val() || [] : $sel.val();
             $sel.empty();
 
-            // Only add empty option for single select
-            if (!isMultiSelect) {
+            // Only add empty option for optional single selects (not required)
+            if (!isMultiSelect && !$sel.prop('required')) {
                 $sel.append('<option value="">' + ($sel.data('placeholder') || 'Select') + '</option>');
             }
 
@@ -207,13 +267,15 @@ $(document).ready(function () {
                 $sel.append(`<option value="${item.id}">${item[textKey]}</option>`);
             });
 
-            // Restore selected values
-            if (currentVal) {
+            // Restore selected values, or pick first option for required single selects
+            if (currentVal && ((isMultiSelect && currentVal.length) || (!isMultiSelect && currentVal !== ''))) {
                 if (isMultiSelect && Array.isArray(currentVal)) {
                     $sel.val(currentVal);
                 } else if (!isMultiSelect) {
                     $sel.val(currentVal);
                 }
+            } else if (!isMultiSelect && $sel.prop('required') && items.length > 0) {
+                $sel.val(String(items[0].id));
             }
         };
 
@@ -334,43 +396,77 @@ $(document).ready(function () {
 
             const formData = new FormData(this);
 
+            // Empty optional numbers → omit so Laravel nullable|numeric passes
+            ['price', 'sale_price', 'stock_quantity', 'gst'].forEach(function (field) {
+                const val = formData.get(field);
+                if (val === '' || val === null) {
+                    formData.delete(field);
+                }
+            });
+
+            // Client-side image size check (max 8MB per file)
+            const maxFileBytes = 8 * 1024 * 1024;
+            let oversizedFile = null;
+            for (const [key, value] of formData.entries()) {
+                if (value instanceof File && value.size > 0 && value.size > maxFileBytes) {
+                    oversizedFile = value;
+                    break;
+                }
+            }
+            if (oversizedFile) {
+                AdminUtils.hideButtonLoading(submitBtn);
+                AdminUtils.showError(`"${oversizedFile.name}" is too large. Max 8MB per image.`);
+                return;
+            }
+
             $.ajax({
                 url: window.routes.admin.products.store,
                 method: 'POST',
                 data: formData,
                 processData: false,
                 contentType: false,
-                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
-                success: function () {
+                dataType: 'json',
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                success: function (response) {
                     AdminUtils.hideButtonLoading(submitBtn);
-                    AdminUtils.showSuccess('Product created successfully');
-                    // Redirect to index
-                    window.location = window.routes.admin.products.index;
+                    if (response && response.success) {
+                        AdminUtils.showSuccess(response.message || 'Product created successfully');
+                        window.location = window.routes.admin.products.index;
+                        return;
+                    }
+                    AdminUtils.showError((response && response.message) || 'Error creating product');
                 },
                 error: function (xhr) {
                     AdminUtils.hideButtonLoading(submitBtn);
+                    if (xhr.status === 413) {
+                        AdminUtils.showError(xhr.responseJSON?.message || 'Upload too large. Use smaller images.');
+                        return;
+                    }
                     if (xhr.status === 422) {
                         const errors = xhr.responseJSON?.errors || {};
                         AdminUtils.clearValidationErrors();
-                        // Field-specific errors
+                        const messages = [];
+
                         Object.keys(errors).forEach(function (field) {
-                            // Support nested fields like variants.0.color_id
-                            const normalized = field.replace(/\.(\d+)\./g, '[$1][').replace(/\.(\w+)$/g, '][$1]');
-                            let $input = $(`#create_${field}`);
-                            if ($input.length === 0) {
-                                $input = $(`[name="${field}"]`);
-                            }
-                            if ($input.length === 0) {
-                                $input = $(`[name="${normalized}"]`);
-                            }
-                            if ($input.length) {
-                                $input.addClass('is-invalid');
-                                $input.after(`<div class="invalid-feedback">${errors[field][0]}</div>`);
-                            }
+                            const msg = errors[field][0];
+                            messages.push(/failed to upload/i.test(msg)
+                                ? 'Image upload failed. Use a PNG, JPG, or GIF under 8MB.'
+                                : msg);
+                            showProductFieldError(field, msg, 'create');
                         });
-                        AdminUtils.showError('Please fix the highlighted errors');
+
+                        AdminUtils.showError(messages.length ? messages.join('\n') : 'Please fix the validation errors');
+                        const $firstError = $('.product-image-error:visible, #createProductForm .is-invalid, .variant-error-message:visible').first();
+                        if ($firstError.length) {
+                            $('html, body').animate({ scrollTop: $firstError.offset().top - 120 }, 300);
+                        }
                     } else {
-                        AdminUtils.showError('Error creating product');
+                        const message = xhr.responseJSON?.message || xhr.responseJSON?.error || 'Error creating product';
+                        AdminUtils.showError(message);
                     }
                 }
             });
@@ -469,42 +565,75 @@ $(document).ready(function () {
 
             const formData = new FormData(this);
 
+            ['price', 'sale_price', 'stock_quantity', 'gst'].forEach(function (field) {
+                const val = formData.get(field);
+                if (val === '' || val === null) {
+                    formData.delete(field);
+                }
+            });
+
+            const maxFileBytes = 8 * 1024 * 1024;
+            let oversizedFile = null;
+            for (const [key, value] of formData.entries()) {
+                if (value instanceof File && value.size > 0 && value.size > maxFileBytes) {
+                    oversizedFile = value;
+                    break;
+                }
+            }
+            if (oversizedFile) {
+                AdminUtils.hideButtonLoading(submitBtn);
+                $('.product-image-error').text('Image size must be less than 8MB.').show();
+                $('.product-image-upload').css('border-color', '#dc3545');
+                AdminUtils.showError(`"${oversizedFile.name}" is too large. Max 8MB per image.`);
+                return;
+            }
+
             $.ajax({
                 url: window.routes.admin.products.update.replace(':id', id),
                 method: 'POST',
                 data: formData,
                 processData: false,
                 contentType: false,
-                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
-                success: function () {
+                dataType: 'json',
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                success: function (response) {
                     AdminUtils.hideButtonLoading(submitBtn);
                     AdminUtils.clearValidationErrors();
-                    AdminUtils.showSuccess('Product updated successfully');
-                    // Redirect back to index
-                    window.location = window.routes.admin.products.index;
+                    if (response && response.success !== false) {
+                        AdminUtils.showSuccess((response && response.message) || 'Product updated successfully');
+                        window.location = window.routes.admin.products.index;
+                        return;
+                    }
+                    AdminUtils.showError((response && response.message) || 'Error updating product');
                 },
                 error: function (xhr) {
                     AdminUtils.hideButtonLoading(submitBtn);
+                    if (xhr.status === 413) {
+                        AdminUtils.showError(xhr.responseJSON?.message || 'Upload too large. Use smaller images.');
+                        return;
+                    }
                     if (xhr.status === 422) {
                         const errors = xhr.responseJSON?.errors || {};
                         AdminUtils.clearValidationErrors();
+                        const messages = [];
                         Object.keys(errors).forEach(function (field) {
-                            const normalized = field.replace(/\.(\d+)\./g, '[$1][').replace(/\.(\w+)$/g, '][$1]');
-                            let $input = $(`#edit_${field}`);
-                            if ($input.length === 0) {
-                                $input = $(`[name="${field}"]`);
-                            }
-                            if ($input.length === 0) {
-                                $input = $(`[name="${normalized}"]`);
-                            }
-                            if ($input.length) {
-                                $input.addClass('is-invalid');
-                                $input.after(`<div class="invalid-feedback">${errors[field][0]}</div>`);
-                            }
+                            const msg = errors[field][0];
+                            messages.push(/failed to upload/i.test(msg)
+                                ? 'Image upload failed. Use a PNG, JPG, or GIF under 8MB.'
+                                : msg);
+                            showProductFieldError(field, msg, 'edit');
                         });
-                        AdminUtils.showError('Please fix the highlighted errors');
+                        AdminUtils.showError(messages.length ? messages.join('\n') : 'Please fix the validation errors');
+                        const $firstError = $('.product-image-error:visible, #editProductForm .is-invalid, .variant-error-message:visible').first();
+                        if ($firstError.length) {
+                            $('html, body').animate({ scrollTop: $firstError.offset().top - 120 }, 300);
+                        }
                     } else {
-                        AdminUtils.showError('Error updating product');
+                        AdminUtils.showError(xhr.responseJSON?.message || xhr.responseJSON?.error || 'Error updating product');
                     }
                 }
             });
@@ -670,7 +799,7 @@ $(document).ready(function () {
         }
 
         const maxFiles = 10;
-        const maxSize = 10 * 1024 * 1024; // 10MB
+        const maxSize = 8 * 1024 * 1024; // 8MB
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
 
         if (files.length > maxFiles) {
@@ -687,7 +816,7 @@ $(document).ready(function () {
 
             // Validate file size
             if (file.size > maxSize) {
-                AdminUtils.showError(`File too large: ${file.name}. Maximum size is 10MB.`);
+                AdminUtils.showError(`File too large: ${file.name}. Maximum size is 8MB.`);
                 return;
             }
 
@@ -715,11 +844,16 @@ $(document).ready(function () {
             return;
         }
 
-        // Validate file size (10MB)
-        const maxSize = 10 * 1024 * 1024; // 10MB
+        // Validate file size (8MB) — on select
+        const maxSize = 8 * 1024 * 1024; // 8MB
         if (file.size > maxSize) {
-            showUploadError(uploadArea, `File too large: ${file.name}. Maximum size is 10MB.`);
-            AdminUtils.showError(`File too large: ${file.name}. Maximum size is 10MB.`);
+            showUploadError(uploadArea, `File too large: ${file.name}. Maximum size is 8MB.`);
+            AdminUtils.showError(`File too large: ${file.name}. Maximum size is 8MB.`);
+            // Clear the file input that triggered this
+            const $wrapper = previewContainer.closest('.image-upload-wrapper');
+            $wrapper.find('input[type="file"]').val('');
+            $('#productImageInput').val('');
+            $('.product-image-error').text('Image size must be less than 8MB.').show();
             return;
         }
 
@@ -890,41 +1024,52 @@ $(document).ready(function () {
 
     // Initialize filters functionality
     function initializeFilters() {
-        // Load filter options
         loadFilterOptions();
-
-        // Bind filter events
         bindFilterEvents();
 
-        // Clear filters functionality
         $('#clearFilters').on('click', function () {
             clearAllFilters();
         });
+
+        $('#clearSearchBtn').on('click', function () {
+            $('#searchFilter').val('');
+            $(this).hide();
+            applyFilters();
+        });
+
+        $('#activeFilterChipList').on('click', '.products-filter-chip', function () {
+            const target = $(this).data('target');
+            if (target === 'searchFilter') {
+                $('#searchFilter').val('');
+                $('#clearSearchBtn').hide();
+            } else {
+                $('#' + target).val('');
+            }
+            applyFilters();
+        });
+
+        updateFilterUiState();
     }
 
-    // Load filter options (colors, materials, designs)
+    // Load filter options (colors, materials, designs, etc.)
     function loadFilterOptions() {
         $.ajax({
             url: window.routes.admin.products.relatedData,
             method: 'GET',
             success: function (response) {
-                // Populate color filter
-                const colorSelect = $('#colorFilter');
-                response.colors.forEach(function (color) {
-                    colorSelect.append(`<option value="${color.id}">${color.name}</option>`);
-                });
+                const appendOptions = function ($select, items) {
+                    if (!$select.length || !items) return;
+                    items.forEach(function (item) {
+                        $select.append(`<option value="${item.id}">${item.name}</option>`);
+                    });
+                };
 
-                // Populate material filter
-                const materialSelect = $('#materialFilter');
-                response.materials.forEach(function (material) {
-                    materialSelect.append(`<option value="${material.id}">${material.name}</option>`);
-                });
-
-                // Populate design filter
-                const designSelect = $('#designFilter');
-                response.designs.forEach(function (design) {
-                    designSelect.append(`<option value="${design.id}">${design.name}</option>`);
-                });
+                appendOptions($('#colorFilter'), response.colors);
+                appendOptions($('#materialFilter'), response.materials);
+                appendOptions($('#designFilter'), response.designs);
+                appendOptions($('#transparencyFilter'), response.transparencies);
+                appendOptions($('#characteristicFilter'), response.characteristics);
+                appendOptions($('#usageFilter'), response.usage);
             },
             error: function (xhr) {
                 console.error('Error loading filter options:', xhr);
@@ -934,36 +1079,91 @@ $(document).ready(function () {
 
     // Bind filter events
     function bindFilterEvents() {
-        // Search filter with debounce
         let searchTimeout;
         $('#searchFilter').on('input', function () {
+            const hasValue = $.trim($(this).val()).length > 0;
+            $('#clearSearchBtn').toggle(hasValue);
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(function () {
                 applyFilters();
-            }, 500);
+            }, 400);
         });
 
-        // All other filters
-        $('#colorFilter, #materialFilter, #designFilter, #typeFilter, #productBaseFilter').on('change', function () {
+        $('#colorFilter, #materialFilter, #designFilter, #transparencyFilter, #characteristicFilter, #usageFilter, #typeFilter, #productBaseFilter, #statusFilter').on('change', function () {
             applyFilters();
         });
     }
 
+    function getActiveFilters() {
+        const defs = [
+            { key: 'search_filter', id: 'searchFilter', label: 'Search', isSearch: true },
+            { key: 'color_filter', id: 'colorFilter', label: 'Color' },
+            { key: 'material_filter', id: 'materialFilter', label: 'Material' },
+            { key: 'design_filter', id: 'designFilter', label: 'Design' },
+            { key: 'transparency_filter', id: 'transparencyFilter', label: 'Transparency' },
+            { key: 'characteristic_filter', id: 'characteristicFilter', label: 'Characteristic' },
+            { key: 'usage_filter', id: 'usageFilter', label: 'Usage' },
+            { key: 'type_filter', id: 'typeFilter', label: 'Type' },
+            { key: 'product_base_filter', id: 'productBaseFilter', label: 'Base' },
+            { key: 'status_filter', id: 'statusFilter', label: 'Status' }
+        ];
+
+        return defs.map(function (def) {
+            const $el = $('#' + def.id);
+            const value = $.trim($el.val() || '');
+            if (!value) return null;
+            const display = def.isSearch ? value : ($el.find('option:selected').text() || value);
+            return Object.assign({}, def, { value: value, display: display });
+        }).filter(Boolean);
+    }
+
+    function updateFilterUiState() {
+        const active = getActiveFilters();
+        const count = active.length;
+
+        $('#clearFilters').toggle(count > 0);
+
+        const $chipsWrap = $('#activeFilterChips');
+        const $chipList = $('#activeFilterChipList');
+        $chipList.empty();
+
+        if (count === 0) {
+            $chipsWrap.hide();
+            return;
+        }
+
+        $('#activeFilterCount').text(count === 1 ? '1 filter' : count + ' filters');
+        active.forEach(function (f) {
+            const safeLabel = $('<div>').text(f.label).html();
+            const safeDisplay = $('<div>').text(f.display).html();
+            $chipList.append(
+                `<button type="button" class="products-filter-chip" data-target="${f.id}" title="Remove ${safeLabel}">
+                    <span>${safeLabel}: ${safeDisplay}</span>
+                    <i class="bx bx-x"></i>
+                </button>`
+            );
+        });
+        $chipsWrap.show();
+    }
+
     // Apply filters to DataTable
     function applyFilters() {
+        updateFilterUiState();
         if (!productsTable) return;
 
-        // Get filter values
         const filters = {
             search_filter: $('#searchFilter').val(),
             color_filter: $('#colorFilter').val(),
             material_filter: $('#materialFilter').val(),
             design_filter: $('#designFilter').val(),
+            transparency_filter: $('#transparencyFilter').val(),
+            characteristic_filter: $('#characteristicFilter').val(),
+            usage_filter: $('#usageFilter').val(),
             type_filter: $('#typeFilter').val(),
-            product_base_filter: $('#productBaseFilter').val()
+            product_base_filter: $('#productBaseFilter').val(),
+            status_filter: $('#statusFilter').val()
         };
 
-        // Update DataTable with filters
         productsTable.ajax.url(buildFilteredUrl(filters)).load();
     }
 
@@ -984,13 +1184,19 @@ $(document).ready(function () {
     // Clear all filters
     function clearAllFilters() {
         $('#searchFilter').val('');
+        $('#clearSearchBtn').hide();
         $('#colorFilter').val('');
         $('#materialFilter').val('');
         $('#designFilter').val('');
+        $('#transparencyFilter').val('');
+        $('#characteristicFilter').val('');
+        $('#usageFilter').val('');
         $('#typeFilter').val('');
         $('#productBaseFilter').val('');
+        $('#statusFilter').val('');
 
-        // Reset DataTable to original URL
+        updateFilterUiState();
+
         if (productsTable) {
             productsTable.ajax.url(window.routes.admin.products.index).load();
         }

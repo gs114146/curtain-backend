@@ -200,7 +200,6 @@ class ProductVariantManager {
                         <div class="col-md-4">
                             <label class="form-label">Color <span class="text-danger">*</span></label>
                             <select class="form-select variant-color-select" name="variants[${index}][color_id]" required>
-                                <option value="">Select Color</option>
                                 ${colorOptions}
                             </select>
                         </div>
@@ -226,6 +225,7 @@ class ProductVariantManager {
                                 <span>Select an image or drag & drop</span>
                                 <input type="file" class="variant-image-input" name="variants[${index}][images][]" accept="image/*" style="display: none;">
                             </div>
+                            <div class="text-muted small mt-1">PNG, JPG, GIF up to 8MB</div>
                             <div class="variant-error-message text-danger small mt-1" style="display:none;">An image is required for this variant.</div>
                         </div>
                         <div class="col-md-4 d-flex align-items-center">
@@ -312,10 +312,25 @@ class ProductVariantManager {
 
     handleVariantImageUpload($variant, files) {
         const $preview = $variant.find('.variant-image-preview');
+        const $input = $variant.find('.variant-image-input');
+        const $error = $variant.find('.variant-error-message');
+        const maxBytes = 8 * 1024 * 1024; // 8MB
 
         // Accept only the first image; replace any existing preview
         const file = files && files.length ? files[0] : null;
         if (!file || !file.type.startsWith('image/')) {
+            $input.val('');
+            $error.text('Please select a valid image file (PNG, JPG, GIF).').show();
+            return;
+        }
+
+        if (file.size > maxBytes) {
+            $input.val('');
+            $preview.empty();
+            $error.text('Image size must be less than 8MB.').show();
+            if (typeof AdminUtils !== 'undefined') {
+                AdminUtils.showError(`"${file.name}" is too large. Max 8MB.`);
+            }
             return;
         }
 
@@ -330,7 +345,7 @@ class ProductVariantManager {
                 </div>
             `;
             $preview.empty().append(imageHtml);
-            $variant.find('.variant-error-message').hide();
+            $error.hide().text('An image is required for this variant.');
         };
         reader.readAsDataURL(file);
     }
@@ -663,17 +678,24 @@ function handleProductImageUpload(files) {
     const $preview = $('.product-image-preview');
     const $error = $('.product-image-error');
     const $input = $('#productImageInput');
+    const maxBytes = 8 * 1024 * 1024; // 8MB
 
     // Accept only the first image; replace any existing preview
     const file = files && files.length ? files[0] : null;
     if (!file || !file.type.startsWith('image/')) {
-        $error.text('Please select a valid image file.').show();
+        $input.val('');
+        $error.text('Please select a valid image file (PNG, JPG, GIF).').show();
         return;
     }
 
-    // Check file size (10MB max)
-    if (file.size > 10 * 1024 * 1024) {
-        $error.text('Image size must be less than 10MB.').show();
+    // Check file size (8MB max) — validate on select
+    if (file.size > maxBytes) {
+        $input.val('');
+        $error.text('Image size must be less than 8MB.').show();
+        $('.product-image-upload').css('border-color', '#dc3545');
+        if (typeof AdminUtils !== 'undefined') {
+            AdminUtils.showError(`"${file.name}" is too large. Max 8MB.`);
+        }
         return;
     }
 
@@ -689,6 +711,7 @@ function handleProductImageUpload(files) {
         `;
         $preview.empty().append(imageHtml);
         $error.hide();
+        $('.product-image-upload').css('border-color', '');
     };
     reader.readAsDataURL(file);
 }
@@ -788,6 +811,7 @@ $(document).ready(function () {
     });
 
     // Enforce at least one variant and inject product-level fields per variant
+    // Note: create page uses AJAX in products.js — only inject fields here, do not native-submit
     $('#createProductForm').on('submit', function (e) {
         if (!window.productVariantManager.validateVariants()) {
             e.preventDefault();
@@ -799,8 +823,10 @@ $(document).ready(function () {
         const productStock = $('#create_stock_quantity').val();
 
         $('.variant-item').each((index, element) => {
-            const idx = index + 1;
             const $variant = $(element);
+            const colorName = $variant.find('.variant-color-select').attr('name');
+            const match = colorName ? colorName.match(/variants\[(\d+)\]\[color_id\]/) : null;
+            const idx = match ? match[1] : (index + 1);
 
             const ensureHidden = (name, value) => {
                 let $hidden = $variant.find(`input[type="hidden"][name="variants[${idx}][${name}]"]`);
