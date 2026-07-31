@@ -3,7 +3,7 @@
 @section('title', 'Products Management')
 
 @section('content')
-    <div class="container-xxl flex-grow-1 container-p-y">
+    <div class="container-fluid">
         <div class="row">
             <div class="col-12">
                 <div class="card">

@@ -380,39 +380,35 @@ class ProductVariantManager {
     // Validation methods
     validateVariants() {
         let isValid = true;
-        const errors = [];
 
         const variantCount = $('.variant-item').length;
         if (variantCount === 0) {
-            errors.push('Add at least one color variant');
-            isValid = false;
+            if (typeof AdminUtils !== 'undefined') {
+                AdminUtils.showError('Add at least one color variant');
+            }
+            return false;
         }
 
         $('.variant-item').each((index, element) => {
             const $variant = $(element);
             const colorId = $variant.find('.variant-color-select').val();
             const filesCount = ($variant.find('.variant-image-input')[0]?.files?.length) || 0;
+            const hasExistingImage = $variant.find('.variant-image-preview .variant-image-item').length > 0;
 
             if (!colorId) {
-                errors.push(`Variant ${index + 1}: Color is required`);
                 $variant.addClass('has-error');
                 isValid = false;
             } else {
                 $variant.removeClass('has-error');
             }
 
-            if (filesCount === 0) {
-                errors.push(`Variant ${index + 1}: At least one image is required`);
+            if (filesCount === 0 && !hasExistingImage) {
                 $variant.find('.variant-error-message').show();
                 isValid = false;
             } else {
                 $variant.find('.variant-error-message').hide();
             }
         });
-
-        if (!isValid) {
-            alert('Please fix the following errors:\n' + errors.join('\n'));
-        }
 
         return isValid;
     }

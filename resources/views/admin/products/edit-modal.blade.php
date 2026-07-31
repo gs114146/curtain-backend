@@ -597,9 +597,10 @@ text-decoration: underline;
                     <!-- Basic Product Information -->
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="edit_name" class="form-label">Hanger Name</label>
+                            <label for="edit_name" class="form-label">Hanger Name <span
+                                    class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="edit_name" name="name"
-                                value="{{ $product->name }}">
+                                value="{{ $product->name }}" required>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="edit_sku" class="form-label">SKU</label>

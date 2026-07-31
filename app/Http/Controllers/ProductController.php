@@ -162,7 +162,7 @@ class ProductController extends Controller
             if ($hasVariants) {
                 // New variant-based product
                 $request->validate([
-                    'name' => 'nullable|string|max:255',
+                    'name' => 'required|string|max:255',
                     'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
                     'description' => 'required|string',
                     'manual_product_id' => 'required|string|max:255|unique:products,manual_product_id',
@@ -232,7 +232,7 @@ class ProductController extends Controller
             } else {
                 // Legacy product with single color
                 $request->validate([
-                    'name' => 'nullable|string|max:255',
+                    'name' => 'required|string|max:255',
                     'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
                     'description' => 'required|string',
                     'sku' => 'nullable|string|unique:products,sku',
@@ -485,7 +485,7 @@ class ProductController extends Controller
                 }
 
                 $request->validate(array_merge([
-                    'name' => 'nullable|string|max:255',
+                    'name' => 'required|string|max:255',
                     'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
                     'description' => 'required|string',
                     'manual_product_id' => 'required|string|max:255|unique:products,manual_product_id,' . $product->id,
@@ -569,7 +569,7 @@ class ProductController extends Controller
                 // Legacy product update
                 // Image is always nullable on update - user may not want to change it
                 $request->validate([
-                    'name' => 'nullable|string|max:255',
+                    'name' => 'required|string|max:255',
                     'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
                     'description' => 'required|string',
                     'manual_product_id' => 'required|string|max:255|unique:products,manual_product_id,' . $product->id,
