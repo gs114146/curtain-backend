@@ -8,7 +8,7 @@
 <script src="{{ asset('admin/js/modules/common/datatables-transparency-config.js') }}"></script>
 <script src="{{ asset('admin/js/modules/common/datatables-characteristics-config.js') }}"></script>
 <script src="{{ asset('admin/js/modules/common/datatables-usage-config.js') }}"></script>
-<script src="{{ asset('admin/js/modules/common/datatables-products-config.js') }}?v={{ @filemtime(public_path('admin/js/modules/common/datatables-products-config.js')) ?: time() }}"></script>
+<script src="{{ asset('admin/js/modules/common/datatables-products-config.v2.js') }}?v=20261117"></script>
 <script src="{{ asset('admin/js/modules/common/datatables-consultations-config.js') }}"></script>
 <script src="{{ asset('admin/js/modules/common/datatables-contact-us-config.js') }}"></script>
 
