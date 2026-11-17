@@ -299,9 +299,9 @@ $(document).ready(function () {
         if (shouldPopulateCreate) fillSelect('#create_characteristic_ids', relatedData.characteristics);
         if (shouldPopulateEdit) fillSelect('#edit_characteristic_ids', relatedData.characteristics);
 
-        // Usage
-        if (shouldPopulateCreate) fillSelect('#create_usage_id', relatedData.usage);
-        if (shouldPopulateEdit) fillSelect('#edit_usage_id', relatedData.usage);
+        // Usage (multi-select)
+        if (shouldPopulateCreate) fillSelect('#create_usage_ids', relatedData.usage);
+        if (shouldPopulateEdit) fillSelect('#edit_usage_ids', relatedData.usage);
 
         // Initialize Select2 for multi-select fields
         initializeSelect2();
@@ -314,9 +314,13 @@ $(document).ready(function () {
             '#create_design_ids',
             '#create_material_ids',
             '#create_characteristic_ids',
+            '#create_usage_ids',
+            '#create_types',
             '#edit_design_ids',
             '#edit_material_ids',
-            '#edit_characteristic_ids'
+            '#edit_characteristic_ids',
+            '#edit_usage_ids',
+            '#edit_types'
         ];
 
         multiSelectFields.forEach(function (selector) {

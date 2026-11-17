@@ -2,14 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasTitleCaseName;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Transparency extends Model
 {
+    use HasTitleCaseName;
+
     protected $table = 'transparency';
 
     protected $fillable = [
+        'external_id',
         'name',
         'status'
     ];

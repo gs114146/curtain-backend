@@ -16,5 +16,5 @@
     ];
 @endphp
 @foreach ($files as $file)
-    <link rel="stylesheet" href="{{ asset($folder . $file['path']) }}" class="{{ $file['class'] }}" />
+    <link rel="stylesheet" href="{{ asset($folder . $file['path']) }}?v={{ @filemtime(public_path($folder . $file['path'])) ?: time() }}" class="{{ $file['class'] }}" />
 @endforeach

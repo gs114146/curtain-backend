@@ -66,7 +66,7 @@ class ProductController extends Controller
      */
     public function getDataTableData()
     {
-        $query = Product::with(['design', 'material', 'transparency', 'characteristic', 'usage', 'variants.color']);
+        $query = Product::with(['design', 'material', 'transparency', 'characteristic', 'usage', 'usages', 'types', 'variants.color']);
 
         // Handle search (from DataTables search)
         if (request()->has('search') && !empty(request('search')['value'])) {
@@ -94,11 +94,11 @@ class ProductController extends Controller
         if (request()->has('order')) {
             $orderColumn = request('order')[0]['column'];
             $orderDir = request('order')[0]['dir'];
-            $columns = ['name', 'variants', 'price_range', 'stock_total', 'status', 'actions'];
+            $columns = ['image', 'name', 'sku', 'variants', 'status', 'actions'];
 
             if (isset($columns[$orderColumn])) {
-                if ($columns[$orderColumn] === 'actions') {
-                    // Actions column is not orderable, so order by name instead
+                if (in_array($columns[$orderColumn], ['actions', 'image', 'variants'], true)) {
+                    // Non-orderable columns — fall back to name
                     $query->orderBy('name', $orderDir);
                 } else {
                     $query->orderBy($columns[$orderColumn], $orderDir);
@@ -123,20 +123,13 @@ class ProductController extends Controller
             $variantCount = $variants->count();
             $variantNames = $variants->pluck('color.name')->join(', ');
 
-            // Get price range from variants
-            $prices = $variants->pluck('price')->filter();
-            $minPrice = $prices->min();
-            $maxPrice = $prices->max();
-            $priceRange = $minPrice ? '€' . number_format($minPrice, 2) . ($minPrice != $maxPrice ? ' - €' . number_format($maxPrice, 2) : '') : 'N/A';
-
-            // Get total stock from all variants
-            $totalStock = $variants->sum('stock_quantity');
+            $imagePath = $product->image ?: 'images/product-placeholder.svg';
 
             $data[] = [
+                'image' => asset($imagePath),
                 'name' => $product->name,
+                'sku' => $product->sku ?: '-',
                 'variants' => $variantCount > 0 ? $variantCount . ' variants (' . $variantNames . ')' : 'No variants',
-                'price_range' => $priceRange,
-                'stock_total' => $totalStock,
                 'status' => $product->status,
                 'actions' => $product->id
             ];
@@ -185,8 +178,8 @@ class ProductController extends Controller
                 $request->validate([
                     'name' => 'required|string|max:255',
                     'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:8192',
-                    'description' => 'required|string',
-                    'manual_product_id' => 'required|string|max:255|unique:products,manual_product_id',
+                    'description' => 'nullable|string',
+                    'manual_product_id' => 'nullable|string|max:255|unique:products,manual_product_id',
                     'dimensions' => 'required|string|max:255',
                     'weight' => 'required|string|max:255',
                     'horizontal_repeat' => 'nullable|string|max:255',
@@ -200,8 +193,10 @@ class ProductController extends Controller
                     'transparency_id' => 'nullable|exists:transparency,id',
                     'characteristic_ids' => 'required|array|min:1',
                     'characteristic_ids.*' => 'exists:characteristics,id',
-                    'usage_id' => 'required|exists:usage,id',
-                    'type' => 'required|in:product_listing,view_qualities,upholstery,latest',
+                    'usage_ids' => 'required|array|min:1',
+                    'usage_ids.*' => 'exists:usage,id',
+                    'types' => 'required|array|min:1',
+                    'types.*' => 'in:product_listing,view_qualities,upholstery,latest',
                     'product_base' => 'required|in:curtain,upholstery',
                     'status' => 'nullable|in:active,inactive,draft',
                     'featured' => 'boolean',
@@ -224,7 +219,7 @@ class ProductController extends Controller
                     'variants.*.images.*' => 'image|mimes:jpeg,png,jpg,gif|max:8192'
                 ], $this->productImageValidationMessages());
 
-                $data = $request->all();
+                $data = $this->normalizeOptionalProductFields($request->all());
                 $data['slug'] = $this->createUniqueSlug($request->name);
 
                 // Handle product image upload
@@ -236,9 +231,15 @@ class ProductController extends Controller
                 $designIds = $request->input('design_ids', []);
                 $materialIds = $request->input('material_ids', []);
                 $characteristicIds = $request->input('characteristic_ids', []);
+                $usageIds = $request->input('usage_ids', []);
+                $types = $request->input('types', []);
 
                 // Remove variants and relationship arrays from product data
-                unset($data['variants'], $data['design_ids'], $data['material_ids'], $data['characteristic_ids']);
+                unset($data['variants'], $data['design_ids'], $data['material_ids'], $data['characteristic_ids'], $data['usage_ids'], $data['types']);
+
+                // Keep legacy usage_id / type in sync with the first selected value
+                $data['usage_id'] = !empty($usageIds) ? (int) $usageIds[0] : null;
+                $data['type'] = !empty($types) ? $types[0] : null;
 
                 // Create the base product
                 $product = Product::create($data);
@@ -247,6 +248,8 @@ class ProductController extends Controller
                 $product->designs()->sync($designIds);
                 $product->materials()->sync($materialIds);
                 $product->characteristics()->sync($characteristicIds);
+                $product->usages()->sync($usageIds);
+                $product->syncTypes($types);
 
                 // Create variants
                 $this->createProductVariants($product, $request->variants);
@@ -255,9 +258,9 @@ class ProductController extends Controller
                 $request->validate([
                     'name' => 'required|string|max:255',
                     'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:8192',
-                    'description' => 'required|string',
+                    'description' => 'nullable|string',
                     'sku' => 'nullable|string|unique:products,sku',
-                    'manual_product_id' => 'required|string|max:255|unique:products,manual_product_id',
+                    'manual_product_id' => 'nullable|string|max:255|unique:products,manual_product_id',
                     'price' => 'nullable|numeric|min:0',
                     'sale_price' => 'nullable|numeric|min:0',
                     'stock_quantity' => 'nullable|integer|min:0',
@@ -275,8 +278,10 @@ class ProductController extends Controller
                     'transparency_id' => 'nullable|exists:transparency,id',
                     'characteristic_ids' => 'required|array|min:1',
                     'characteristic_ids.*' => 'exists:characteristics,id',
-                    'usage_id' => 'required|exists:usage,id',
-                    'type' => 'required|in:product_listing,view_qualities,upholstery,latest',
+                    'usage_ids' => 'required|array|min:1',
+                    'usage_ids.*' => 'exists:usage,id',
+                    'types' => 'required|array|min:1',
+                    'types.*' => 'in:product_listing,view_qualities,upholstery,latest',
                     'product_base' => 'required|in:curtain,upholstery',
                     'status' => 'nullable|in:active,inactive,draft',
                     'featured' => 'boolean',
@@ -289,7 +294,7 @@ class ProductController extends Controller
                     'gst' => 'nullable|numeric|min:0|max:100',
                 ], $this->productImageValidationMessages());
 
-                $data = $request->all();
+                $data = $this->normalizeOptionalProductFields($request->all());
                 $data['slug'] = $this->createUniqueSlug($request->name);
 
                 // Handle product image upload
@@ -306,9 +311,15 @@ class ProductController extends Controller
                 $designIds = $request->input('design_ids', []);
                 $materialIds = $request->input('material_ids', []);
                 $characteristicIds = $request->input('characteristic_ids', []);
+                $usageIds = $request->input('usage_ids', []);
+                $types = $request->input('types', []);
 
                 // Remove relationship arrays from product data
-                unset($data['design_ids'], $data['material_ids'], $data['characteristic_ids']);
+                unset($data['design_ids'], $data['material_ids'], $data['characteristic_ids'], $data['usage_ids'], $data['types']);
+
+                // Keep legacy usage_id / type in sync with the first selected value
+                $data['usage_id'] = !empty($usageIds) ? (int) $usageIds[0] : null;
+                $data['type'] = !empty($types) ? $types[0] : null;
 
                 $product = Product::create($data);
 
@@ -316,6 +327,8 @@ class ProductController extends Controller
                 $product->designs()->sync($designIds);
                 $product->materials()->sync($materialIds);
                 $product->characteristics()->sync($characteristicIds);
+                $product->usages()->sync($usageIds);
+                $product->syncTypes($types);
 
                 // Create product_media record using the same uploaded image
                 if ($request->hasFile('image') && isset($data['image'])) {
@@ -340,8 +353,8 @@ class ProductController extends Controller
 
             if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
                 $loadRelations = $hasVariants
-                    ? ['design', 'material', 'transparency', 'characteristic', 'usage', 'variants.color', 'variants.media']
-                    : ['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'media'];
+                    ? ['design', 'material', 'transparency', 'characteristic', 'usage', 'usages', 'types', 'designs', 'materials', 'characteristics', 'variants.color', 'variants.media']
+                    : ['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'usages', 'types', 'designs', 'materials', 'characteristics', 'media'];
 
                 return response()->json([
                     'success' => true,
@@ -381,9 +394,9 @@ class ProductController extends Controller
         $isVariantProduct = $product->variants()->count() > 0;
 
         if ($isVariantProduct) {
-            $product->load(['design', 'material', 'transparency', 'characteristic', 'usage', 'designs', 'materials', 'characteristics', 'variants.color', 'variants.media', 'media']);
+            $product->load(['design', 'material', 'transparency', 'characteristic', 'usage', 'usages', 'types', 'designs', 'materials', 'characteristics', 'variants.color', 'variants.media', 'media']);
         } else {
-            $product->load(['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'designs', 'materials', 'characteristics', 'media']);
+            $product->load(['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'usages', 'types', 'designs', 'materials', 'characteristics', 'media']);
         }
 
         if (request()->ajax()) {
@@ -402,9 +415,9 @@ class ProductController extends Controller
         $isVariantProduct = $product->variants()->count() > 0;
 
         if ($isVariantProduct) {
-            $product->load(['design', 'material', 'transparency', 'characteristic', 'usage', 'designs', 'materials', 'characteristics', 'variants.color', 'variants.media']);
+            $product->load(['design', 'material', 'transparency', 'characteristic', 'usage', 'usages', 'types', 'designs', 'materials', 'characteristics', 'variants.color', 'variants.media']);
         } else {
-            $product->load(['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'designs', 'materials', 'characteristics', 'media']);
+            $product->load(['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'usages', 'types', 'designs', 'materials', 'characteristics', 'media']);
         }
 
         // Get related data for forms
@@ -440,9 +453,9 @@ class ProductController extends Controller
         $isVariantProduct = $product->variants()->count() > 0;
 
         if ($isVariantProduct) {
-            $product->load(['design', 'material', 'transparency', 'characteristic', 'usage', 'designs', 'materials', 'characteristics', 'variants.color', 'variants.media']);
+            $product->load(['design', 'material', 'transparency', 'characteristic', 'usage', 'usages', 'types', 'designs', 'materials', 'characteristics', 'variants.color', 'variants.media']);
         } else {
-            $product->load(['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'designs', 'materials', 'characteristics', 'media']);
+            $product->load(['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'usages', 'types', 'designs', 'materials', 'characteristics', 'media']);
         }
 
         // Get related data for forms
@@ -518,8 +531,8 @@ class ProductController extends Controller
                 $request->validate(array_merge([
                     'name' => 'required|string|max:255',
                     'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:8192',
-                    'description' => 'required|string',
-                    'manual_product_id' => 'required|string|max:255|unique:products,manual_product_id,' . $product->id,
+                    'description' => 'nullable|string',
+                    'manual_product_id' => 'nullable|string|max:255|unique:products,manual_product_id,' . $product->id,
                     'dimensions' => 'sometimes|required|string|max:255',
                     'weight' => 'sometimes|required|string|max:255',
                     'horizontal_repeat' => 'nullable|string|max:255',
@@ -530,8 +543,10 @@ class ProductController extends Controller
                     'material_id' => 'sometimes|required|exists:materials,id',
                     'transparency_id' => 'nullable|exists:transparency,id',
                     'characteristic_id' => 'sometimes|required|exists:characteristics,id',
-                    'usage_id' => 'sometimes|required|exists:usage,id',
-                    'type' => 'required|in:product_listing,view_qualities,upholstery,latest',
+                    'usage_ids' => 'sometimes|required|array|min:1',
+                    'usage_ids.*' => 'exists:usage,id',
+                    'types' => 'required|array|min:1',
+                    'types.*' => 'in:product_listing,view_qualities,upholstery,latest',
                     'product_base' => 'required|in:curtain,upholstery',
                     'status' => 'sometimes|in:active,inactive,draft',
                     'featured' => 'sometimes|boolean',
@@ -551,15 +566,25 @@ class ProductController extends Controller
                     'variants.*.images.*' => 'image|mimes:jpeg,png,jpg,gif|max:8192'
                 ], $variantRules), $this->productImageValidationMessages());
 
-                $data = $request->all();
+                $data = $this->normalizeOptionalProductFields($request->all());
 
                 // Extract relationship IDs before removing from data
                 $designIds = $request->input('design_ids');
                 $materialIds = $request->input('material_ids');
                 $characteristicIds = $request->input('characteristic_ids');
+                $usageIds = $request->input('usage_ids');
+                $types = $request->input('types');
 
                 // Remove variants and relationship arrays from product data
-                unset($data['variants'], $data['design_ids'], $data['material_ids'], $data['characteristic_ids']);
+                unset($data['variants'], $data['design_ids'], $data['material_ids'], $data['characteristic_ids'], $data['usage_ids'], $data['types']);
+
+                // Keep legacy usage_id / type in sync with the first selected value
+                if ($usageIds !== null) {
+                    $data['usage_id'] = !empty($usageIds) ? (int) $usageIds[0] : null;
+                }
+                if ($types !== null) {
+                    $data['type'] = !empty($types) ? $types[0] : null;
+                }
 
                 // Remove image from data if no file is uploaded (to preserve existing image)
                 if (!$request->hasFile('image')) {
@@ -591,6 +616,12 @@ class ProductController extends Controller
                 if ($characteristicIds !== null) {
                     $product->characteristics()->sync($characteristicIds);
                 }
+                if ($usageIds !== null) {
+                    $product->usages()->sync($usageIds);
+                }
+                if ($types !== null) {
+                    $product->syncTypes($types);
+                }
 
                 // Update variants if provided
                 if ($request->has('variants')) {
@@ -602,8 +633,8 @@ class ProductController extends Controller
                 $request->validate([
                     'name' => 'required|string|max:255',
                     'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:8192',
-                    'description' => 'required|string',
-                    'manual_product_id' => 'required|string|max:255|unique:products,manual_product_id,' . $product->id,
+                    'description' => 'nullable|string',
+                    'manual_product_id' => 'nullable|string|max:255|unique:products,manual_product_id,' . $product->id,
                     'price' => 'nullable|numeric|min:0',
                     'sale_price' => 'nullable|numeric|min:0',
                     'stock_quantity' => 'nullable|integer|min:0',
@@ -621,8 +652,10 @@ class ProductController extends Controller
                     'transparency_id' => 'nullable|exists:transparency,id',
                     'characteristic_ids' => 'sometimes|required|array|min:1',
                     'characteristic_ids.*' => 'exists:characteristics,id',
-                    'usage_id' => 'sometimes|required|exists:usage,id',
-                    'type' => 'required|in:product_listing,view_qualities,upholstery,latest',
+                    'usage_ids' => 'sometimes|required|array|min:1',
+                    'usage_ids.*' => 'exists:usage,id',
+                    'types' => 'required|array|min:1',
+                    'types.*' => 'in:product_listing,view_qualities,upholstery,latest',
                     'product_base' => 'required|in:curtain,upholstery',
                     'status' => 'sometimes|in:active,inactive,draft',
                     'featured' => 'sometimes|boolean',
@@ -635,15 +668,25 @@ class ProductController extends Controller
                     'gst' => 'nullable|numeric|min:0|max:100',
                 ], $this->productImageValidationMessages());
 
-                $data = $request->all();
+                $data = $this->normalizeOptionalProductFields($request->all());
 
                 // Extract relationship IDs before removing from data
                 $designIds = $request->input('design_ids');
                 $materialIds = $request->input('material_ids');
                 $characteristicIds = $request->input('characteristic_ids');
+                $usageIds = $request->input('usage_ids');
+                $types = $request->input('types');
 
                 // Remove SKU and relationship arrays from update data to prevent changes for legacy products
-                unset($data['sku'], $data['design_ids'], $data['material_ids'], $data['characteristic_ids']);
+                unset($data['sku'], $data['design_ids'], $data['material_ids'], $data['characteristic_ids'], $data['usage_ids'], $data['types']);
+
+                // Keep legacy usage_id / type in sync with the first selected value
+                if ($usageIds !== null) {
+                    $data['usage_id'] = !empty($usageIds) ? (int) $usageIds[0] : null;
+                }
+                if ($types !== null) {
+                    $data['type'] = !empty($types) ? $types[0] : null;
+                }
 
                 // Remove image from data if no file is uploaded (to preserve existing image)
                 if (!$request->hasFile('image')) {
@@ -674,6 +717,12 @@ class ProductController extends Controller
                 }
                 if ($characteristicIds !== null) {
                     $product->characteristics()->sync($characteristicIds);
+                }
+                if ($usageIds !== null) {
+                    $product->usages()->sync($usageIds);
+                }
+                if ($types !== null) {
+                    $product->syncTypes($types);
                 }
 
                 // Update product_media record using the same uploaded image
@@ -730,8 +779,8 @@ class ProductController extends Controller
 
             if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
                 $loadRelations = $hasVariants || $product->variants()->count() > 0
-                    ? ['design', 'material', 'transparency', 'characteristic', 'usage', 'variants.color', 'variants.media', 'media']
-                    : ['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'media'];
+                    ? ['design', 'material', 'transparency', 'characteristic', 'usage', 'usages', 'types', 'designs', 'materials', 'characteristics', 'variants.color', 'variants.media', 'media']
+                    : ['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'usages', 'types', 'designs', 'materials', 'characteristics', 'media'];
 
                 return response()->json([
                     'success' => true,
@@ -956,6 +1005,20 @@ class ProductController extends Controller
             'success' => true,
             'sku' => $sku
         ]);
+    }
+
+    /**
+     * Convert empty optional string fields to null (avoids unique collisions on blank values).
+     */
+    private function normalizeOptionalProductFields(array $data): array
+    {
+        foreach (['manual_product_id', 'description'] as $field) {
+            if (array_key_exists($field, $data) && (is_null($data[$field]) || trim((string) $data[$field]) === '')) {
+                $data[$field] = null;
+            }
+        }
+
+        return $data;
     }
 
     /**
@@ -1318,14 +1381,27 @@ class ProductController extends Controller
             });
         }
 
-        // Usage filter
+        // Usage filter (many-to-many + legacy usage_id)
         if (request()->has('usage_filter') && !empty(request('usage_filter'))) {
-            $query->where('usage_id', request('usage_filter'));
+            $usageFilter = request('usage_filter');
+            $query->where(function ($q) use ($usageFilter) {
+                $q->where('usage_id', $usageFilter)
+                    ->orWhereHas('usages', function ($uq) use ($usageFilter) {
+                        $uq->where('usage.id', $usageFilter);
+                    });
+            });
         }
 
         // Product type filter
+        // Type filter (multi types + legacy type column)
         if (request()->has('type_filter') && !empty(request('type_filter'))) {
-            $query->where('type', request('type_filter'));
+            $typeFilter = request('type_filter');
+            $query->where(function ($q) use ($typeFilter) {
+                $q->where('type', $typeFilter)
+                    ->orWhereHas('types', function ($tq) use ($typeFilter) {
+                        $tq->where('type', $typeFilter);
+                    });
+            });
         }
 
         // Product base filter
@@ -1622,6 +1698,9 @@ class ProductController extends Controller
         $destinationPath = $publicPath . '/' . $filename;
         copy($image->getRealPath(), $destinationPath);
 
+        // Generate thumbnail for the root product image
+        $this->generateThumbnail('products/' . $filename);
+
         // Return relative path for database storage
         return 'products/' . $filename;
     }
@@ -1642,15 +1721,18 @@ class ProductController extends Controller
      */
     private function generateThumbnail(string $imagePath, int $maxWidth = 300, int $maxHeight = 300): ?string
     {
+        \Log::info('generateThumbnail started for: ' . $imagePath);
         $fullImagePath = public_path($imagePath);
 
         if (!file_exists($fullImagePath)) {
+            \Log::error('generateThumbnail Failed: File does not exist at ' . $fullImagePath);
             return null;
         }
 
         // Get image info
         $imageInfo = getimagesize($fullImagePath);
         if (!$imageInfo) {
+            \Log::error('generateThumbnail Failed: getimagesize returned false for ' . $fullImagePath);
             return null;
         }
 
@@ -1680,9 +1762,11 @@ class ProductController extends Controller
         }
 
         if (!$sourceImage) {
+            \Log::error('generateThumbnail Failed: $sourceImage could not be created from mime type: ' . $mimeType);
             return null;
         }
 
+        \Log::info('generateThumbnail: sourceImage created successfully.');
         // Create thumbnail
         $thumbnail = imagecreatetruecolor($thumbWidth, $thumbHeight);
 
@@ -1708,9 +1792,9 @@ class ProductController extends Controller
             $originalHeight
         );
 
-        // Generate thumbnail filename
+        // Generate thumbnail filename (always use .png extension for 100% lossless quality & compression)
         $pathInfo = pathinfo($imagePath);
-        $thumbnailPath = $pathInfo['dirname'] . '/' . $pathInfo['filename'] . '_thumb.' . $pathInfo['extension'];
+        $thumbnailPath = $pathInfo['dirname'] . '/' . $pathInfo['filename'] . '_thumb.png';
         $fullThumbnailPath = public_path($thumbnailPath);
 
         // Ensure directory exists
@@ -1719,20 +1803,13 @@ class ProductController extends Controller
             mkdir($thumbnailDir, 0755, true);
         }
 
-        // Save thumbnail based on mime type with improved quality
-        switch ($mimeType) {
-            case 'image/jpeg':
-            case 'image/jpg':
-                // JPEG quality: 0-100, higher = better quality (90 for high quality thumbnails)
-                imagejpeg($thumbnail, $fullThumbnailPath, 80);
-                break;
-            case 'image/png':
-                // PNG compression: 0-9, lower = better quality (0 = no compression, best quality)
-                imagepng($thumbnail, $fullThumbnailPath, 0);
-                break;
-            case 'image/gif':
-                imagegif($thumbnail, $fullThumbnailPath);
-                break;
+        // Always save thumbnail as PNG with maximum lossless Zlib compression (level 9)
+        $result = imagepng($thumbnail, $fullThumbnailPath, 9);
+        
+        if (!$result) {
+            \Log::error('generateThumbnail Failed: imagepng could not write to ' . $fullThumbnailPath);
+        } else {
+            \Log::info('generateThumbnail Success: Thumbnail saved to ' . $fullThumbnailPath);
         }
 
         // Free memory

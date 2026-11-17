@@ -119,11 +119,53 @@ class Product extends Model
     }
 
     /**
-     * Get the usage that owns the product.
+     * Get the usage that owns the product (legacy single relationship).
      */
     public function usage(): BelongsTo
     {
         return $this->belongsTo(Usage::class);
+    }
+
+    /**
+     * Get the usages that belong to the product (many-to-many).
+     */
+    public function usages(): BelongsToMany
+    {
+        return $this->belongsToMany(Usage::class, 'product_usage');
+    }
+
+    /**
+     * Get the product types (many values per product).
+     */
+    public function types(): HasMany
+    {
+        return $this->hasMany(ProductType::class);
+    }
+
+    /**
+     * Sync product types (pivot rows). Caller should keep legacy type column in sync.
+     */
+    public function syncTypes(array $types): void
+    {
+        $types = array_values(array_unique(array_filter($types)));
+
+        $this->types()->delete();
+
+        foreach ($types as $type) {
+            $this->types()->create(['type' => $type]);
+        }
+    }
+
+    /**
+     * Get selected type values as a flat array.
+     */
+    public function typeValues(): array
+    {
+        if ($this->relationLoaded('types') && $this->getRelation('types')->isNotEmpty()) {
+            return $this->getRelation('types')->pluck('type')->all();
+        }
+
+        return array_values(array_filter([$this->type]));
     }
 
     /**

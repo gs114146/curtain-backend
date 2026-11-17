@@ -57,15 +57,25 @@ class PublicApiController extends Controller
                     $filterCounts['material_id_' . implode(',', $materialIds)] = $testQuery->count();
                 }
 
-                if ($typeValues = $this->normalizeStrings($request->input('type'))) {
+                if ($typeValues = $this->normalizeStrings($request->input('type') ?: $request->input('types'))) {
                     $testQuery = clone $baseQuery;
-                    $testQuery->whereIn('type', $typeValues);
+                    $testQuery->where(function ($q) use ($typeValues) {
+                        $q->whereIn('type', $typeValues)
+                            ->orWhereHas('types', function ($tq) use ($typeValues) {
+                                $tq->whereIn('type', $typeValues);
+                            });
+                    });
                     $filterCounts['type_' . implode(',', $typeValues)] = $testQuery->count();
                 }
 
-                if ($usageIds = $this->normalizeIds($request->input('usage_id'))) {
+                if ($usageIds = $this->normalizeIds($request->input('usage_id') ?: $request->input('usage_ids'))) {
                     $testQuery = clone $baseQuery;
-                    $testQuery->whereIn('usage_id', $usageIds);
+                    $testQuery->where(function ($q) use ($usageIds) {
+                        $q->whereIn('usage_id', $usageIds)
+                            ->orWhereHas('usages', function ($uq) use ($usageIds) {
+                                $uq->whereIn('usage.id', $usageIds);
+                            });
+                    });
                     $filterCounts['usage_id_' . implode(',', $usageIds)] = $testQuery->count();
                 }
 
@@ -130,7 +140,7 @@ class PublicApiController extends Controller
     public function getProduct($id): JsonResponse
     {
         try {
-            $product = Product::with(['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'designs', 'materials', 'characteristics', 'media', 'variants.color', 'variants.media'])
+            $product = Product::with(['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'usages', 'types', 'designs', 'materials', 'characteristics', 'media', 'variants.color', 'variants.media'])
                 ->where('status', 'active')
                 ->findOrFail($id);
 
@@ -199,7 +209,7 @@ class PublicApiController extends Controller
     public function getFeaturedProducts(Request $request): JsonResponse
     {
         try {
-            $products = Product::with(['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'designs', 'materials', 'characteristics', 'media', 'variants.color', 'variants.media'])
+            $products = Product::with(['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'usages', 'types', 'designs', 'materials', 'characteristics', 'media', 'variants.color', 'variants.media'])
                 ->where('status', 'active')
                 ->where('featured', true)
                 ->orderBy('created_at', 'desc')
@@ -223,9 +233,14 @@ class PublicApiController extends Controller
     public function getLatestProducts(Request $request): JsonResponse
     {
         try {
-            $query = Product::with(['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'designs', 'materials', 'characteristics', 'media', 'variants.color', 'variants.media'])
+            $query = Product::with(['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'usages', 'types', 'designs', 'materials', 'characteristics', 'media', 'variants.color', 'variants.media'])
                 ->where('status', 'active')
-                ->where('type', 'latest');
+                ->where(function ($q) {
+                    $q->where('type', 'latest')
+                        ->orWhereHas('types', function ($tq) {
+                            $tq->where('type', 'latest');
+                        });
+                });
 
             // Product Base filter (curtain or upholstery)
             if ($productBase = $request->product_base) {
@@ -300,10 +315,10 @@ class PublicApiController extends Controller
      */
     private function buildProductQuery(Request $request)
     {
-        $query = Product::with(['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'designs', 'materials', 'characteristics', 'media', 'variants.color', 'variants.media'])
+        $query = Product::with(['color', 'design', 'material', 'transparency', 'characteristic', 'usage', 'usages', 'types', 'designs', 'materials', 'characteristics', 'media', 'variants.color', 'variants.media'])
             ->where('status', 'active');
 
-        // Search - name, description, manual_product_id, and variant article/article_description
+        // Search - name, description, manual_product_id, and variant article/article_description/sku/color name
         if ($search = $request->search) {
             $search = trim((string) $search);
             if ($search !== '') {
@@ -315,7 +330,11 @@ class PublicApiController extends Controller
                             $vq->where('status', 'active')
                                 ->where(function ($sq) use ($search) {
                                     $sq->where('article', 'LIKE', "%{$search}%")
-                                        ->orWhere('article_description', 'LIKE', "%{$search}%");
+                                        ->orWhere('article_description', 'LIKE', "%{$search}%")
+                                        ->orWhere('sku', 'LIKE', "%{$search}%")
+                                        ->orWhereHas('color', function ($cq) use ($search) {
+                                            $cq->where('name', 'LIKE', "%{$search}%");
+                                        });
                                 });
                         });
                 });
@@ -328,8 +347,13 @@ class PublicApiController extends Controller
             $query->whereIn('transparency_id', $transparencyIds);
         }
 
-        if ($usageIds = $this->normalizeIds($request->input('usage_id'))) {
-            $query->whereIn('usage_id', $usageIds);
+        if ($usageIds = $this->normalizeIds($request->input('usage_id') ?: $request->input('usage_ids'))) {
+            $query->where(function ($q) use ($usageIds) {
+                $q->whereIn('usage_id', $usageIds)
+                    ->orWhereHas('usages', function ($uq) use ($usageIds) {
+                        $uq->whereIn('usage.id', $usageIds);
+                    });
+            });
         }
 
         // ID-based filters (many-to-many relationships) - accepts comma-separated values
@@ -419,12 +443,22 @@ class PublicApiController extends Controller
 
         // String-based filters - accepts comma-separated values
         // Always apply if filter is provided
-        $typeValues = $this->normalizeStrings($request->input('type'));
+        $typeValues = $this->normalizeStrings($request->input('type') ?: $request->input('types'));
         if (!empty($typeValues)) {
-            $query->whereIn('type', $typeValues);
+            $query->where(function ($q) use ($typeValues) {
+                $q->whereIn('type', $typeValues)
+                    ->orWhereHas('types', function ($tq) use ($typeValues) {
+                        $tq->whereIn('type', $typeValues);
+                    });
+            });
         } else {
             // If no type is specified, default to product_listing
-            $query->where('type', 'product_listing');
+            $query->where(function ($q) {
+                $q->where('type', 'product_listing')
+                    ->orWhereHas('types', function ($tq) {
+                        $tq->where('type', 'product_listing');
+                    });
+            });
         }
 
         // Product Base filter - accepts comma-separated values
@@ -562,6 +596,8 @@ class PublicApiController extends Controller
             'direction' => $product->direction,
             'extra_data' => $product->extra_data,
             'type' => $product->type,
+            'types' => $product->typeValues(),
+            'types_list' => implode(', ', $product->typeValues()),
             'product_base' => $product->product_base,
             'featured' => $product->featured,
             'status' => $product->status,
@@ -595,6 +631,10 @@ class PublicApiController extends Controller
                 'id' => $product->usage->id,
                 'name' => $product->usage->name
             ] : null,
+            'usages_list' => $product->relationLoaded('usages') ? $product->getRelation('usages')->pluck('name')->join(', ') : '',
+            'usages_array' => $product->relationLoaded('usages') ? $product->getRelation('usages')->map(function ($usage) {
+                return ['id' => $usage->id, 'name' => $usage->name];
+            })->toArray() : [],
             // Single relationships (legacy)
             'color' => $product->color ? [
                 'id' => $product->color->id,
@@ -661,33 +701,71 @@ class PublicApiController extends Controller
             $totalStock = $product->variants->sum('stock_quantity');
             $inStock = $product->variants->where('in_stock', true)->count() > 0;
 
-            // Determine default variant: if search matches a variant's article/article_description, use it; else is_default or first
+            // Determine default variant: if search matches a variant's article/article_description/sku/color, use it; else is_default or first
             $variants = $product->variants ?? collect();
+            $isVariantMatch = false;
+            $defaultVariant = null;
+
             if ($search !== null && $search !== '' && $variants->isNotEmpty()) {
                 $searchLower = mb_strtolower(trim($search));
+                
+                // FIRST PASS: Exact match on article number (highest priority)
                 $matchingVariant = $variants
                     ->where('status', 'active')
                     ->first(function ($v) use ($searchLower) {
                         $a = mb_strtolower((string) ($v->article ?? ''));
-                        $d = mb_strtolower((string) ($v->article_description ?? ''));
-                        return mb_strpos($a, $searchLower) !== false || mb_strpos($d, $searchLower) !== false;
+                        return $a === $searchLower;
                     });
-                $defaultVariant = $matchingVariant ?: $variants->where('is_default', true)->first() ?: $variants->first();
+                    
+                // SECOND PASS: Partial match on other fields if no exact match found
+                if (!$matchingVariant) {
+                    $matchingVariant = $variants
+                        ->where('status', 'active')
+                        ->first(function ($v) use ($searchLower) {
+                            $a = mb_strtolower((string) ($v->article ?? ''));
+                            $d = mb_strtolower((string) ($v->article_description ?? ''));
+                            $sku = mb_strtolower((string) ($v->sku ?? ''));
+                            $colorName = mb_strtolower((string) (optional($v->color)->name ?? ''));
+                            return ($a !== '' && mb_strpos($a, $searchLower) !== false) ||
+                                   ($d !== '' && mb_strpos($d, $searchLower) !== false) ||
+                                   ($sku !== '' && mb_strpos($sku, $searchLower) !== false) ||
+                                   ($colorName !== '' && mb_strpos($colorName, $searchLower) !== false);
+                        });
+                }
+                
+                if ($matchingVariant) {
+                    $defaultVariant = $matchingVariant;
+                    $isVariantMatch = true;
+                } else {
+                    $defaultVariant = $variants->where('is_default', true)->first() ?: $variants->first();
+                }
             } else {
                 $defaultVariant = $variants->where('is_default', true)->first() ?: $variants->first();
             }
+
             $variantPrimary = null;
             if ($defaultVariant) {
                 $variantPrimary = $defaultVariant->media->where('is_primary', true)->first() ?: $defaultVariant->media->first();
             }
+
             // Priority: product image > variant primary media > product media
-            $rootImage = $product->image
-                ? asset($product->image)
-                : ($variantPrimary
-                    ? asset($variantPrimary->file_path)
-                    : (optional($product->media->where('is_primary', true)->first())->file_path
-                        ? asset($product->media->where('is_primary', true)->first()->file_path)
-                        : (optional($product->media->first())->file_path ? asset($product->media->first()->file_path) : null)));
+            if ($product->image) {
+                $rootImage = asset($product->image);
+                $pathInfo = pathinfo($product->image);
+                $rootThumbnail = asset($pathInfo['dirname'] . '/' . $pathInfo['filename'] . '_thumb.png');
+            } elseif ($variantPrimary && $variantPrimary->file_path) {
+                $rootImage = asset($variantPrimary->file_path);
+                $rootThumbnail = $variantPrimary->thumbnail ? asset($variantPrimary->thumbnail) : null;
+            } elseif (optional($product->media->where('is_primary', true)->first())->file_path) {
+                $rootImage = asset($product->media->where('is_primary', true)->first()->file_path);
+                $rootThumbnail = optional($product->media->where('is_primary', true)->first())->thumbnail ? asset($product->media->where('is_primary', true)->first()->thumbnail) : null;
+            } elseif (optional($product->media->first())->file_path) {
+                $rootImage = asset($product->media->first()->file_path);
+                $rootThumbnail = optional($product->media->first())->thumbnail ? asset($product->media->first()->thumbnail) : null;
+            } else {
+                $rootImage = null;
+                $rootThumbnail = null;
+            }
 
             // Compute a compact default_variant block for quick consumption
             $defaultVariantBlock = null;
@@ -702,6 +780,8 @@ class PublicApiController extends Controller
                     'sale_price' => $defaultVariant->sale_price !== null ? '€' . number_format($defaultVariant->sale_price, 2) : null,
                     'stock_quantity' => $defaultVariant->stock_quantity,
                     'in_stock' => (bool) $defaultVariant->in_stock,
+                    'is_default' => (bool) $defaultVariant->is_default,
+                    'is_matched' => $isVariantMatch,
                     'color' => $defaultVariant->color ? [
                         'id' => $defaultVariant->color->id,
                         'name' => $defaultVariant->color->name,
@@ -722,6 +802,7 @@ class PublicApiController extends Controller
                 'total_stock' => $totalStock,
                 'in_stock' => $inStock, // Override with calculated value from variants
                 'image' => $rootImage,
+                'thumbnail' => $rootThumbnail,
                 'default_variant' => $defaultVariantBlock,
                 'media' => $product->media->map(fn($media) => [
                     'id' => $media->id,
@@ -753,7 +834,8 @@ class PublicApiController extends Controller
                     'file_type' => $media->file_type,
                     'is_primary' => $media->is_primary
                 ]),
-                'image' => $product->image ? asset($product->image) : (optional($product->media->where('is_primary', true)->first())->file_path ? asset($product->media->where('is_primary', true)->first()->file_path) : (optional($product->media->first())->file_path ? asset($product->media->first()->file_path) : null))
+                'image' => $product->image ? asset($product->image) : (optional($product->media->where('is_primary', true)->first())->file_path ? asset($product->media->where('is_primary', true)->first()->file_path) : (optional($product->media->first())->file_path ? asset($product->media->first()->file_path) : null)),
+                'thumbnail' => $product->image ? asset(pathinfo($product->image, PATHINFO_DIRNAME) . '/' . pathinfo($product->image, PATHINFO_FILENAME) . '_thumb.png') : (optional($product->media->where('is_primary', true)->first())->thumbnail ? asset($product->media->where('is_primary', true)->first()->thumbnail) : (optional($product->media->first())->thumbnail ? asset($product->media->first()->thumbnail) : null))
             ]);
         }
     }

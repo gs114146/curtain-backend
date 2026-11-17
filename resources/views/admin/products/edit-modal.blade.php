@@ -612,11 +612,10 @@ text-decoration: underline;
                             </div>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="edit_manual_product_id" class="form-label">Hanger ID <span
-                                    class="text-danger">*</span></label>
+                            <label for="edit_manual_product_id" class="form-label">Hanger ID</label>
                             <input type="text" class="form-control" id="edit_manual_product_id"
                                 name="manual_product_id" value="{{ $product->manual_product_id }}"
-                                placeholder="Enter hanger ID" required>
+                                placeholder="Enter hanger ID">
                             <div class="form-text">
                                 <i class="bx bx-info-circle text-info"></i>
                                 Enter a unique hanger ID
@@ -634,9 +633,8 @@ text-decoration: underline;
                             </select>
                         </div>
                         <div class="col-12 mb-3">
-                            <label for="edit_description" class="form-label">Hanger Description <span
-                                    class="text-danger">*</span></label>
-                            <textarea class="form-control" id="edit_description" name="description" rows="3" required>{{ $product->description }}</textarea>
+                            <label for="edit_description" class="form-label">Hanger Description</label>
+                            <textarea class="form-control" id="edit_description" name="description" rows="3">{{ $product->description }}</textarea>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="edit_dimensions" class="form-label">Width <span
@@ -728,30 +726,33 @@ text-decoration: underline;
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="edit_usage_id" class="form-label">Usage <span
+                            <label for="edit_usage_ids" class="form-label">Usage <span
                                     class="text-danger">*</span></label>
-                            <select class="form-select" id="edit_usage_id" name="usage_id" required>
+                            <select class="form-select" id="edit_usage_ids" name="usage_ids[]" multiple required>
                                 @if (isset($usage))
                                     @foreach ($usage as $usageItem)
                                         <option value="{{ $usageItem->id }}"
-                                            {{ $product->usage_id == $usageItem->id ? 'selected' : '' }}>
+                                            {{ $product->relationLoaded('usages') && $product->getRelation('usages')->contains($usageItem->id) ? 'selected' : '' }}>
                                             {{ $usageItem->name }}</option>
                                     @endforeach
                                 @endif
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="edit_type" class="form-label">Product Type <span
+                            <label for="edit_types" class="form-label">Product Type <span
                                     class="text-danger">*</span></label>
-                            <select class="form-select" id="edit_type" name="type" required>
+                            <select class="form-select" id="edit_types" name="types[]" multiple required>
+                                @php $selectedTypes = $product->typeValues(); @endphp
                                 <option value="product_listing"
-                                    {{ $product->type == 'product_listing' ? 'selected' : '' }}>Product Listing
+                                    {{ in_array('product_listing', $selectedTypes) ? 'selected' : '' }}>Product Listing
                                 </option>
                                 <option value="view_qualities"
-                                    {{ $product->type == 'view_qualities' ? 'selected' : '' }}>View Qualities</option>
-                                <option value="upholstery" {{ $product->type == 'upholstery' ? 'selected' : '' }}>
+                                    {{ in_array('view_qualities', $selectedTypes) ? 'selected' : '' }}>View Qualities</option>
+                                <option value="upholstery"
+                                    {{ in_array('upholstery', $selectedTypes) ? 'selected' : '' }}>
                                     Upholstery</option>
-                                <option value="latest" {{ $product->type == 'latest' ? 'selected' : '' }}>
+                                <option value="latest"
+                                    {{ in_array('latest', $selectedTypes) ? 'selected' : '' }}>
                                     Latest</option>
                             </select>
                         </div>

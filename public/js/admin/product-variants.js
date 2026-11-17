@@ -338,7 +338,7 @@ class ProductVariantManager {
         reader.onload = (e) => {
             const imageHtml = `
                 <div class="variant-image-item" style="position:relative;width:96px;height:96px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;background:#fff;">
-                    <img src="${e.target.result}" alt="Preview" style="width:100%;height:100%;object-fit:cover;display:block;">
+                    <img src="${e.target.result}" alt="Preview" class="js-image-preview" title="Click to preview" style="width:100%;height:100%;object-fit:cover;display:block;cursor:pointer;">
                     <button type="button" class="variant-image-remove" title="Remove" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(239,68,68,0.95);color:#fff;border:none;display:flex;align-items:center;justify-content:center;font-size:12px;">
                         <i class="bx bx-x" style="line-height:1;"></i>
                     </button>
@@ -499,7 +499,7 @@ class ProductVariantManager {
             media.forEach(function (image) {
                 const imageHtml = `
                     <div class="variant-image-item" data-image-id="${image.id}" style="position:relative;width:96px;height:96px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;background:#fff;">
-                        <img src="${image.file_path}" alt="Variant Image" style="width:100%;height:100%;object-fit:cover;display:block;">
+                        <img src="${image.file_path}" alt="Variant Image" class="js-image-preview" title="Click to preview" style="width:100%;height:100%;object-fit:cover;display:block;cursor:pointer;">
                         <button type="button" class="variant-image-remove" data-image-id="${image.id}" title="Remove" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(239,68,68,0.95);color:#fff;border:none;display:flex;align-items:center;justify-content:center;font-size:12px;">
                             <i class="bx bx-x" style="line-height:1;"></i>
                         </button>
@@ -703,7 +703,7 @@ function handleProductImageUpload(files) {
     reader.onload = (e) => {
         const imageHtml = `
             <div class="product-image-item" style="position:relative;width:120px;height:120px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;background:#fff;">
-                <img src="${e.target.result}" alt="Preview" style="width:100%;height:100%;object-fit:cover;display:block;">
+                <img src="${e.target.result}" alt="Preview" class="js-image-preview" title="Click to preview" style="width:100%;height:100%;object-fit:cover;display:block;cursor:pointer;">
                 <button type="button" class="product-image-remove" title="Remove" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(239,68,68,0.95);color:#fff;border:none;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;">
                     <i class="bx bx-x" style="line-height:1;"></i>
                 </button>

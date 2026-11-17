@@ -82,10 +82,10 @@
                             <table class="table table-bordered w-100" id="productsTable">
                                 <thead>
                                     <tr>
+                                        <th>Image</th>
                                         <th>Name</th>
+                                        <th>SKU</th>
                                         <th>Variants</th>
-                                        <th>Price Range</th>
-                                        <th>Total Stock</th>
                                         <th>Status</th>
                                         <th>Actions</th>
                                     </tr>
@@ -96,6 +96,20 @@
                             </table>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="productImagePreviewModal" tabindex="-1" aria-labelledby="productImagePreviewLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="productImagePreviewLabel">Product image</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center p-3">
+                    <img src="" alt="" id="productImagePreviewImg" class="img-fluid product-image-preview-full">
                 </div>
             </div>
         </div>

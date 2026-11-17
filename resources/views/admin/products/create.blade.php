@@ -39,10 +39,9 @@
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="create_manual_product_id" class="form-label">Hanger ID <span
-                                            class="text-danger">*</span></label>
+                                    <label for="create_manual_product_id" class="form-label">Hanger ID</label>
                                     <input type="text" class="form-control" id="create_manual_product_id"
-                                        name="manual_product_id" placeholder="Enter hanger ID" required>
+                                        name="manual_product_id" placeholder="Enter hanger ID">
                                     <div class="form-text">
                                         <i class="bx bx-info-circle text-info"></i>
                                         Enter a unique hanger ID
@@ -72,9 +71,8 @@
                                     <div class="product-image-preview d-flex gap-2 flex-wrap mt-2"></div>
                                 </div>
                                 <div class="col-12 mb-3">
-                                    <label for="create_description" class="form-label">Hanger Description <span
-                                            class="text-danger">*</span></label>
-                                    <textarea class="form-control" id="create_description" name="description" rows="3" required></textarea>
+                                    <label for="create_description" class="form-label">Hanger Description</label>
+                                    <textarea class="form-control" id="create_description" name="description" rows="3"></textarea>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="create_dimensions" class="form-label">Width <span
@@ -148,9 +146,10 @@
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="create_usage_id" class="form-label">Usage <span
+                                    <label for="create_usage_ids" class="form-label">Usage <span
                                             class="text-danger">*</span></label>
-                                    <select class="form-select" id="create_usage_id" name="usage_id" required>
+                                    <select class="form-select" id="create_usage_ids" name="usage_ids[]" multiple
+                                        required>
                                         @foreach ($usage as $usageItem)
                                             <option value="{{ $usageItem->id }}">{{ $usageItem->name }}</option>
                                         @endforeach
@@ -178,9 +177,9 @@
                                         name="stock_quantity" min="0">
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="create_type" class="form-label">Product Type <span
+                                    <label for="create_types" class="form-label">Product Type <span
                                             class="text-danger">*</span></label>
-                                    <select class="form-select" id="create_type" name="type" required>
+                                    <select class="form-select" id="create_types" name="types[]" multiple required>
                                         <option value="product_listing" selected>Product Listing</option>
                                         <option value="view_qualities">View Qualities</option>
                                         <option value="upholstery">Upholstery</option>
@@ -287,4 +286,45 @@
 
 @push('scripts')
     <script src="{{ asset('js/admin/product-variants.js') }}"></script>
+    <script>
+        $(document).ready(function() {
+            if ($('#createProductForm').length > 0) {
+                setTimeout(function() {
+                    const multiSelectFields = [
+                        '#create_design_ids',
+                        '#create_material_ids',
+                        '#create_characteristic_ids',
+                        '#create_usage_ids',
+                        '#create_types'
+                    ];
+
+                    multiSelectFields.forEach(function(selector) {
+                        const $select = $(selector);
+                        if ($select.length > 0) {
+                            if ($select.hasClass('select2-hidden-accessible')) {
+                                $select.select2('destroy');
+                            }
+
+                            const selectedValues = [];
+                            $select.find('option:selected').each(function() {
+                                selectedValues.push($(this).val());
+                            });
+
+                            $select.select2({
+                                theme: 'bootstrap-5',
+                                placeholder: 'Select options',
+                                allowClear: true,
+                                width: '100%',
+                                closeOnSelect: false
+                            });
+
+                            if (selectedValues.length > 0) {
+                                $select.val(selectedValues).trigger('change');
+                            }
+                        }
+                    });
+                }, 300);
+            }
+        });
+    </script>
 @endpush

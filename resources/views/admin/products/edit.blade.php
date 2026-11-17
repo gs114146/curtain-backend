@@ -58,11 +58,10 @@
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="edit_manual_product_id" class="form-label">Hanger ID <span
-                                            class="text-danger">*</span></label>
+                                    <label for="edit_manual_product_id" class="form-label">Hanger ID</label>
                                     <input type="text" class="form-control" id="edit_manual_product_id"
                                         name="manual_product_id" value="{{ $product->manual_product_id }}"
-                                        placeholder="Enter hanger ID" required>
+                                        placeholder="Enter hanger ID">
                                     <div class="form-text">
                                         <i class="bx bx-info-circle text-info"></i>
                                         Enter a unique hanger ID
@@ -86,7 +85,9 @@
                                             <div class="product-image-item"
                                                 style="position:relative;width:120px;height:120px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;background:#fff;">
                                                 <img src="{{ asset($product->image) }}" alt="Current Image"
-                                                    style="width:100%;height:100%;object-fit:cover;display:block;">
+                                                    class="js-image-preview"
+                                                    title="Click to preview"
+                                                    style="width:100%;height:100%;object-fit:cover;display:block;cursor:pointer;">
                                                 <button type="button" class="product-image-remove" title="Remove"
                                                     style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(239,68,68,0.95);color:#fff;border:none;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;">
                                                     <i class="bx bx-x" style="line-height:1;"></i>
@@ -96,9 +97,8 @@
                                     </div>
                                 </div>
                                 <div class="col-12 mb-3">
-                                    <label for="edit_description" class="form-label">Hanger Description <span
-                                            class="text-danger">*</span></label>
-                                    <textarea class="form-control" id="edit_description" name="description" rows="3" required>{{ $product->description }}</textarea>
+                                    <label for="edit_description" class="form-label">Hanger Description</label>
+                                    <textarea class="form-control" id="edit_description" name="description" rows="3">{{ $product->description }}</textarea>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="edit_dimensions" class="form-label">Dimensions <span
@@ -182,12 +182,13 @@
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="edit_usage_id" class="form-label">Usage <span
+                                    <label for="edit_usage_ids" class="form-label">Usage <span
                                             class="text-danger">*</span></label>
-                                    <select class="form-select" id="edit_usage_id" name="usage_id" required>
+                                    <select class="form-select" id="edit_usage_ids" name="usage_ids[]" multiple
+                                        required>
                                         @foreach ($usage as $usageItem)
                                             <option value="{{ $usageItem->id }}"
-                                                {{ $product->usage_id == $usageItem->id ? 'selected' : '' }}>
+                                                {{ $product->relationLoaded('usages') && $product->getRelation('usages')->contains($usageItem->id) ? 'selected' : '' }}>
                                                 {{ $usageItem->name }}</option>
                                         @endforeach
                                     </select>
@@ -215,18 +216,21 @@
                                         name="stock_quantity" min="0" value="{{ $product->stock_quantity }}">
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="edit_type" class="form-label">Product Type <span
+                                    <label for="edit_types" class="form-label">Product Type <span
                                             class="text-danger">*</span></label>
-                                    <select class="form-select" id="edit_type" name="type" required>
+                                    <select class="form-select" id="edit_types" name="types[]" multiple required>
+                                        @php $selectedTypes = $product->typeValues(); @endphp
                                         <option value="product_listing"
-                                            {{ $product->type == 'product_listing' ? 'selected' : '' }}>Product Listing
+                                            {{ in_array('product_listing', $selectedTypes) ? 'selected' : '' }}>Product Listing
                                         </option>
                                         <option value="view_qualities"
-                                            {{ $product->type == 'view_qualities' ? 'selected' : '' }}>View Qualities
+                                            {{ in_array('view_qualities', $selectedTypes) ? 'selected' : '' }}>View Qualities
                                         </option>
-                                        <option value="upholstery" {{ $product->type == 'upholstery' ? 'selected' : '' }}>
+                                        <option value="upholstery"
+                                            {{ in_array('upholstery', $selectedTypes) ? 'selected' : '' }}>
                                             Upholstery</option>
-                                        <option value="latest" {{ $product->type == 'latest' ? 'selected' : '' }}>
+                                        <option value="latest"
+                                            {{ in_array('latest', $selectedTypes) ? 'selected' : '' }}>
                                             Latest</option>
                                     </select>
                                 </div>
@@ -409,7 +413,9 @@
                                                                                 style="position:relative;width:96px;height:96px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;background:#fff;">
                                                                                 <img src="{{ asset($primaryMedia->file_path) }}"
                                                                                     alt="Preview"
-                                                                                    style="width:100%;height:100%;object-fit:cover;display:block;">
+                                                                                    class="js-image-preview"
+                                                                                    title="Click to preview"
+                                                                                    style="width:100%;height:100%;object-fit:cover;display:block;cursor:pointer;">
                                                                                 <button type="button"
                                                                                     class="variant-image-remove"
                                                                                     title="Remove"
@@ -448,6 +454,20 @@
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="productImagePreviewModal" tabindex="-1" aria-labelledby="productImagePreviewLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="productImagePreviewLabel">Image preview</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center p-3">
+                    <img src="" alt="" id="productImagePreviewImg" class="img-fluid product-image-preview-full">
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('styles')
@@ -467,6 +487,22 @@
             border-color: #3b82f6;
             background-color: #dbeafe !important;
         }
+
+        .js-image-preview {
+            cursor: pointer;
+        }
+
+        .js-image-preview:hover {
+            opacity: 0.92;
+        }
+
+        .product-image-preview-full {
+            max-height: min(70vh, 640px);
+            width: auto;
+            max-width: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+        }
     </style>
 @endpush
 
@@ -474,6 +510,24 @@
     <script src="{{ asset('js/admin/product-variants.js') }}"></script>
     <script>
         $(document).ready(function() {
+            $(document).on('click', '#editProductForm .js-image-preview', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const src = $(this).attr('src') || '';
+                const title = $(this).attr('alt') || 'Image preview';
+                const $modal = $('#productImagePreviewModal');
+
+                $('#productImagePreviewImg').attr('src', src).attr('alt', title);
+                $('#productImagePreviewLabel').text(title);
+
+                if (window.bootstrap && bootstrap.Modal) {
+                    bootstrap.Modal.getOrCreateInstance($modal[0]).show();
+                } else {
+                    $modal.modal('show');
+                }
+            });
+
             // Initialize Select2 for multi-select fields on edit page
             if ($('#editProductForm').length > 0) {
                 // Wait a bit to ensure DOM is fully ready and products.js has loaded
@@ -481,7 +535,9 @@
                     const multiSelectFields = [
                         '#edit_design_ids',
                         '#edit_material_ids',
-                        '#edit_characteristic_ids'
+                        '#edit_characteristic_ids',
+                        '#edit_usage_ids',
+                        '#edit_types'
                     ];
 
                     multiSelectFields.forEach(function(selector) {

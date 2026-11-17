@@ -1,6 +1,6 @@
 var DataTablesProductsConfig = {
     initProductsTable: function () {
-        return $('#productsTable').DataTable({
+        const table = $('#productsTable').DataTable({
             processing: true,
             serverSide: true,
             autoWidth: false,
@@ -11,12 +11,41 @@ var DataTablesProductsConfig = {
             },
             columns: [
                 {
+                    data: 'image',
+                    name: 'image',
+                    orderable: false,
+                    searchable: false,
+                    width: '70px',
+                    className: 'text-center',
+                    render: function (data, type, row) {
+                        const src = data || '';
+                        const title = row.name || 'Product image';
+                        const safeSrc = $('<div>').text(src).html();
+                        const safeTitle = $('<div>').text(title).html();
+                        return `
+                            <button type="button" class="products-thumb-btn" data-image="${safeSrc}" data-title="${safeTitle}" title="View image">
+                                <img src="${safeSrc}" alt="${safeTitle}" class="products-table-thumb" loading="lazy">
+                            </button>
+                        `;
+                    }
+                },
+                {
                     data: 'name',
                     name: 'name',
-                    width: '20%',
+                    width: '22%',
                     render: function (data) {
                         if (!data) return '-';
                         return `<span class="products-cell-text" title="${$('<div>').text(data).html()}">${$('<div>').text(data).html()}</span>`;
+                    }
+                },
+                {
+                    data: 'sku',
+                    name: 'sku',
+                    width: '14%',
+                    render: function (data) {
+                        if (!data) return '-';
+                        const safe = $('<div>').text(data).html();
+                        return `<span class="products-cell-text" title="${safe}">${safe}</span>`;
                     }
                 },
                 {
@@ -25,15 +54,13 @@ var DataTablesProductsConfig = {
                     defaultContent: '-',
                     orderable: false,
                     searchable: false,
-                    width: '30%',
+                    width: '28%',
                     render: function (data) {
                         if (!data) return '-';
                         const safe = $('<div>').text(data).html();
                         return `<span class="products-cell-text" title="${safe}">${safe}</span>`;
                     }
                 },
-                { data: 'price_range', name: 'price_range', defaultContent: '-', width: '15%' },
-                { data: 'stock_total', name: 'stock_total', defaultContent: 0, width: '10%' },
                 {
                     data: 'status',
                     name: 'status',
@@ -48,7 +75,7 @@ var DataTablesProductsConfig = {
                     name: 'actions',
                     orderable: false,
                     searchable: false,
-                    width: '15%',
+                    width: '12%',
                     render: function (data) {
                         const editUrl = window.routes.admin.products.edit.replace(':id', data);
                         return `
@@ -62,7 +89,7 @@ var DataTablesProductsConfig = {
                     }
                 }
             ],
-            order: [[0, 'desc']],
+            order: [[1, 'asc']],
             pageLength: 10,
             language: {
                 processing: "Loading...",
@@ -70,7 +97,33 @@ var DataTablesProductsConfig = {
                 zeroRecords: "No matching products found"
             }
         });
+
+        this.bindImagePreview();
+
+        return table;
     },
+
+    bindImagePreview: function () {
+        if (this._imagePreviewBound) {
+            return;
+        }
+        this._imagePreviewBound = true;
+
+        $(document).on('click', '#productsTable .products-thumb-btn', function () {
+            const src = $(this).attr('data-image') || '';
+            const title = $(this).attr('data-title') || 'Product image';
+            const $modal = $('#productImagePreviewModal');
+            $('#productImagePreviewImg').attr('src', src).attr('alt', title);
+            $('#productImagePreviewLabel').text(title);
+
+            if (window.bootstrap && bootstrap.Modal) {
+                bootstrap.Modal.getOrCreateInstance($modal[0]).show();
+            } else {
+                $modal.modal('show');
+            }
+        });
+    },
+
     refresh: function (table) {
         if (table && typeof table.ajax.reload === 'function') {
             table.ajax.reload();

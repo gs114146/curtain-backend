@@ -741,10 +741,9 @@
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="create_usage_id" class="form-label">Usage <span
+                            <label for="create_usage_ids" class="form-label">Usage <span
                                     class="text-danger">*</span></label>
-                            <select class="form-select" id="create_usage_id" name="usage_id" required>
-                                <option value="">Select Usage</option>
+                            <select class="form-select" id="create_usage_ids" name="usage_ids[]" multiple required>
                             </select>
                         </div>
                         <!-- Product-level pricing/stock (applies to all variants) -->
@@ -770,10 +769,9 @@
                                 name="stock_quantity" min="0">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="create_type" class="form-label">Product Type <span
+                            <label for="create_types" class="form-label">Product Type <span
                                     class="text-danger">*</span></label>
-                            <select class="form-select" id="create_type" name="type" required>
-                                <option value="">Select Product Type</option>
+                            <select class="form-select" id="create_types" name="types[]" multiple required>
                                 <option value="product_listing" selected>Product Listing</option>
                                 <option value="view_qualities">View Qualities</option>
                                 <option value="upholstery">Upholstery</option>
